@@ -6,7 +6,7 @@
  * Como usar:
  * 1) Salve este arquivo como app/page.tsx no seu projeto Next.js (App Router).
  * 2) Coloque a logo enviada em /public/logo-gordao.jpg (mesmo nome usado abaixo).
- * 3) Troque a constante WHATSAPP_NUMBER pelo número real (DDI+DDD+número, só dígitos).
+ * 3) O link do WhatsApp já está configurado (WHATSAPP_LINK). Troque se precisar.
  * 4) Ajuste PRODUCTS com o catálogo real (nome, preço, categoria, imagem).
  *
  * Sem dependências externas além de Next/React/Tailwind (já usados no seu projeto).
@@ -16,98 +16,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { PRODUCTS, type CategoryId, type Product } from "./products";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
 
-const WHATSAPP_NUMBER = "5511999999999"; // TODO: trocar pelo número real (só dígitos, com DDI 55)
+const WHATSAPP_LINK = "https://wa.me/message/IR2OGKAK2H6ED1"; // Link oficial do WhatsApp Business do Gordão HeadShop
 
-const CATEGORIES = [
+const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: "tabaco", label: "Tabaco" },
   { id: "sedas", label: "Sedas e Piteiras" },
   { id: "acessorios", label: "Acessórios" },
-] as const;
-
-type CategoryId = (typeof CATEGORIES)[number]["id"];
-
-type Product = {
-  id: string;
-  name: string;
-  category: CategoryId;
-  price: number;
-  description: string;
-  badge?: string;
-};
-
-const PRODUCTS: Product[] = [
-  {
-    id: "tb-01",
-    name: "Tabaco Virgínia Premium 50g",
-    category: "tabaco",
-    price: 42.9,
-    description: "Corte fino, secagem lenta, sabor encorpado.",
-    badge: "Mais vendido",
-  },
-  {
-    id: "tb-02",
-    name: "Tabaco Burley Tradicional 50g",
-    category: "tabaco",
-    price: 38.5,
-    description: "Encorpado, ideal pra quem gosta de trago forte.",
-  },
-  {
-    id: "tb-03",
-    name: "Tabaco Blend da Casa 30g",
-    category: "tabaco",
-    price: 29.9,
-    description: "Mistura exclusiva Gordão, equilibrada e suave.",
-    badge: "Exclusivo",
-  },
-  {
-    id: "sd-01",
-    name: "Sedas King Size Slim (pack c/ 3)",
-    category: "sedas",
-    price: 15.9,
-    description: "Papel ultrafino, queima uniforme, sem gosto de papel.",
-  },
-  {
-    id: "sd-02",
-    name: "Piteiras de Vidro Reutilizáveis",
-    category: "sedas",
-    price: 24.9,
-    description: "Filtra, esfria e não deixa nada passar. Kit com 2.",
-    badge: "Novidade",
-  },
-  {
-    id: "sd-03",
-    name: "Piteiras de Papelão (caixa c/ 50)",
-    category: "sedas",
-    price: 9.9,
-    description: "Clássicas, firmes, do jeito que sempre foi.",
-  },
-  {
-    id: "ac-01",
-    name: "Dichavador 4 Partes Alumínio",
-    category: "acessorios",
-    price: 59.9,
-    description: "Corte parelho, compartimento coletor, tampa imantada.",
-    badge: "Mais vendido",
-  },
-  {
-    id: "ac-02",
-    name: "Isqueiro à Prova de Vento",
-    category: "acessorios",
-    price: 34.9,
-    description: "Chama dupla, recarregável, não apaga no vento.",
-  },
-  {
-    id: "ac-03",
-    name: "Cinzeiro de Silicone Anti-odor",
-    category: "acessorios",
-    price: 27.9,
-    description: "Flexível, lavável, segura até 4 piteiras por vez.",
-  },
 ];
 
 const SLOGAN_LINE_1 = "E se você não gosta,";
@@ -292,7 +212,7 @@ export default function GordaoHeadShopPage() {
   function sendToWhatsApp() {
     if (cart.length === 0 || !isFormValid()) return;
     const text = encodeURIComponent(buildWhatsAppMessage());
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
+    window.open(`${WHATSAPP_LINK}?text=${text}`, "_blank");
   }
 
   return (
@@ -500,7 +420,7 @@ export default function GordaoHeadShopPage() {
 
       {/* ---------------- Botão flutuante WhatsApp ---------------- */}
       <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        href={WHATSAPP_LINK}
         target="_blank"
         rel="noreferrer"
         aria-label="Falar no WhatsApp"
@@ -576,18 +496,21 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
             </span>
           )}
         </div>
-        <p className="text-sm text-[#8ea395]">{product.description}</p>
+        {product.description && (
+          <p className="text-sm text-[#8ea395]">{product.description}</p>
+        )}
       </div>
 
       <div className="mt-6 flex items-center justify-between">
         <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
         <button
-        type="button"
+          type="button"
           onClick={onAdd}
-          className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-4 py-2 text-sm font-medium text-[#f3efe3] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d]"
+          disabled={product.stock === 0}
+          className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-4 py-2 text-sm font-medium text-[#f3efe3] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:group-hover:border-[#2c4a37] disabled:group-hover:text-[#f3efe3]"
         >
           <IconPlus className="h-3.5 w-3.5" />
-          Adicionar
+          {product.stock === 0 ? "Esgotado" : "Adicionar"}
         </button>
       </div>
     </div>
