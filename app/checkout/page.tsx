@@ -1,0 +1,139 @@
+/**
+ * Gordão HeadShop — Checkout
+ * ------------------------------------------------------------------
+ * Como usar:
+ * 1) Salve este arquivo como app/checkout/page.tsx no seu projeto Next.js.
+ * 2) Rode `npm install lucide-react` se ainda não tiver a biblioteca.
+ * 3) Preencha as DUAS constantes logo abaixo com os links reais de pagamento.
+ * 4) Ajuste os dados do pedido em ORDER, mais abaixo.
+ * ------------------------------------------------------------------
+ */
+
+import {
+  QrCode,
+  CreditCard,
+  ShieldCheck,
+  Lock,
+  ArrowRight,
+} from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/* 1) Links de pagamento — preencha aqui                              */
+/* ------------------------------------------------------------------ */
+
+const PIX_PAYMENT_LINK = "https://link.mercadopago.com.br/gordaoheadshop";
+const CARD_PAYMENT_LINK = "https://link.mercadopago.com.br/SEU-LINK-DE-CARTAO-AQUI";
+
+/* ------------------------------------------------------------------ */
+/* 2) Dados do pedido exibidos no resumo — ajuste aqui                */
+/* ------------------------------------------------------------------ */
+
+const ORDER = {
+  productName: "Kit Sessão Gordão",
+  description: "Seda king size, piteira de vidro e dichavador de alumínio.",
+  price: 89.9,
+};
+
+/* ------------------------------------------------------------------ */
+
+function formatBRL(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export default function CheckoutPage() {
+  return (
+    <div className="min-h-screen bg-[#0a0d0a] text-[#f3efe3] antialiased">
+      <GlobalStyles />
+
+      <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-12 sm:px-6">
+        {/* Cabeçalho */}
+        <div className="mb-8 flex items-center gap-2 text-sm text-[#7c9c88]">
+          <Lock className="h-4 w-4" />
+          Checkout seguro
+        </div>
+
+        {/* Resumo do pedido */}
+        <div className="rounded-2xl border border-[#1f2b23] bg-[#10150f] p-6 sm:p-8">
+          <p className="text-xs font-medium text-[#7c9c88]">Resumo do pedido</p>
+
+          <h1 className="mt-3 font-display text-2xl leading-snug text-[#f3efe3] sm:text-3xl">
+            {ORDER.productName}
+          </h1>
+          <p className="mt-2 text-sm text-[#b7c8bb]">{ORDER.description}</p>
+
+          <div className="mt-6 flex items-baseline justify-between border-t border-[#1f2b23] pt-6">
+            <span className="text-sm text-[#8ea395]">Total</span>
+            <span className="font-display text-3xl text-[#f3efe3]">
+              {formatBRL(ORDER.price)}
+            </span>
+          </div>
+        </div>
+
+        {/* Métodos de pagamento */}
+        <div className="mt-6 space-y-3">
+          <a
+            href={PIX_PAYMENT_LINK}
+            className="group flex items-center justify-between gap-4 rounded-2xl bg-[#4caf6d] px-6 py-5 transition hover:bg-[#5fc47f] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0a0d0a]/10">
+                <QrCode className="h-6 w-6 text-[#0a0d0a]" />
+              </span>
+              <span className="text-left">
+                <span className="block font-display text-base text-[#0a0d0a]">
+                  Pagar com Pix
+                </span>
+                <span className="block text-xs text-[#0a0d0a]/70">
+                  Aprovação imediata
+                </span>
+              </span>
+            </span>
+            <ArrowRight className="h-5 w-5 text-[#0a0d0a] transition group-hover:translate-x-1" />
+          </a>
+
+          <a
+            href={CARD_PAYMENT_LINK}
+            className="group flex items-center justify-between gap-4 rounded-2xl bg-[#1e3a5f] px-6 py-5 transition hover:bg-[#254b79] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                <CreditCard className="h-6 w-6 text-[#f3efe3]" />
+              </span>
+              <span className="text-left">
+                <span className="block font-display text-base text-[#f3efe3]">
+                  Pagar com Cartão
+                </span>
+                <span className="block text-xs text-[#c9d6e6]">
+                  Crédito em até 12x
+                </span>
+              </span>
+            </span>
+            <ArrowRight className="h-5 w-5 text-[#f3efe3] transition group-hover:translate-x-1" />
+          </a>
+        </div>
+
+        {/* Selo de confiança */}
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[#5f7767]">
+          <ShieldCheck className="h-4 w-4" />
+          Pagamento processado com segurança pelo Mercado Pago
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GlobalStyles() {
+  return (
+    <style>{`
+      @import url("https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap");
+      .font-display {
+        font-family: "Anton", "Inter", sans-serif;
+        font-weight: 400;
+        letter-spacing: 0.01em;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    `}</style>
+  );
+}
