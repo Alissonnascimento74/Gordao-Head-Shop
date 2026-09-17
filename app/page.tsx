@@ -140,6 +140,8 @@ export default function GordaoHeadShopPage() {
   const [cep, setCep] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [pixNotice, setPixNotice] = useState(false);
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
   const [heroIn, setHeroIn] = useState(false);
 
   useEffect(() => {
@@ -232,6 +234,38 @@ export default function GordaoHeadShopPage() {
     setCartOpen(false);
     setPixNotice(true);
     window.setTimeout(() => setPixNotice(false), 6000);
+  }
+
+  async function payWithCard() {
+    if (cart.length === 0 || !isFormValid()) return;
+    setCardError(null);
+    setCardLoading(true);
+    try {
+      const response = await fetch("/api/create-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((item) => ({
+            title: item.product.name,
+            quantity: item.qty,
+            unit_price: item.product.price,
+          })),
+          payerName: customerName,
+          externalReference: `gordao-${Date.now()}`,
+          method: "cartao",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.init_point) {
+        throw new Error(data.error || "Não foi possível iniciar o pagamento.");
+      }
+      window.location.href = data.init_point;
+    } catch (err) {
+      setCardError(
+        err instanceof Error ? err.message : "Não foi possível iniciar o pagamento."
+      );
+      setCardLoading(false);
+    }
   }
 
   return (
@@ -482,6 +516,9 @@ export default function GordaoHeadShopPage() {
         canSend={isFormValid() && cart.length > 0}
         onSend={sendToWhatsApp}
         onCopyPix={copyPixKeyAndSend}
+        onPayCard={payWithCard}
+        cardLoading={cardLoading}
+        cardError={cardError}
       />
     </div>
   );
@@ -581,6 +618,9 @@ function CartDrawer({
   canSend,
   onSend,
   onCopyPix,
+  onPayCard,
+  cardLoading,
+  cardError,
 }: {
   open: boolean;
   onClose: () => void;
@@ -603,6 +643,9 @@ function CartDrawer({
   canSend: boolean;
   onSend: () => void;
   onCopyPix: () => void;
+  onPayCard: () => void;
+  cardLoading: boolean;
+  cardError: string | null;
 }) {
   return (
     <>
@@ -800,13 +843,19 @@ function CartDrawer({
             ) : (
               <button
                 type="button"
-                onClick={onSend}
-                disabled={!canSend}
+                onClick={onPayCard}
+                disabled={!canSend || cardLoading}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#4caf6d]"
               >
-                <IconWhatsApp className="h-5 w-5" />
-                Finalizar pedido no WhatsApp
+                {cardLoading ? (
+                  "Preparando pagamento..."
+                ) : (
+                  "Pagar com Cartão"
+                )}
               </button>
+            )}
+            {cardError && (
+              <p className="text-center text-xs text-[#e08585]">{cardError}</p>
             )}
             {!canSend && (
               <p className="text-center text-xs text-[#7c9c88]">
