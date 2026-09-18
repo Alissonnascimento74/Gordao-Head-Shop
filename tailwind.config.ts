@@ -22,6 +22,18 @@ const config: Config = {
           sageDark: "#5f7767",
         },
       },
+      // Usado pelo link "Painel Admin" revelado pelo easter egg de cliques
+      // secretos (ver hooks/useSecretAdminAccess.ts) — entra suavemente em
+      // vez de aparecer de repente na tela.
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+      },
+      animation: {
+        fadeIn: "fadeIn 0.3s ease-out",
+      },
     },
   },
   plugins: [],

@@ -17,6 +17,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { PRODUCTS, type CategoryId, type Product } from "./products";
+import Header from "@/components/storefront/Header";
+import Footer from "@/components/storefront/Footer";
 
 const FEATURED_PRODUCTS: { id: string; image: string }[] = [
   { id: "000046-1", image: "/products/bandeja-narcos.jpg" }, // Bandeja Narcos
@@ -43,25 +45,6 @@ const SLOGAN_LINE_3 = "Tudo pra sua sessão ficar o mais leve possível.";
 /* ------------------------------------------------------------------ */
 /* Ícones (SVG inline)                                                 */
 /* ------------------------------------------------------------------ */
-
-function IconSearch(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconCart(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
-      <path d="M3 4h2l2.4 12.2a2 2 0 002 1.8h8.4a2 2 0 002-1.7L21 8H6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="10" cy="21" r="1.4" />
-      <circle cx="18" cy="21" r="1.4" />
-    </svg>
-  );
-}
 
 function IconPlus(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -259,81 +242,15 @@ export default function GordaoHeadShopPage() {
     <div className="min-h-screen bg-[#0a0d0a] text-[#f3efe3] antialiased selection:bg-[#4caf6d] selection:text-[#0a0d0a]">
       <GlobalStyles />
 
-      {/* ---------------- Header ---------------- */}
-      <header className="sticky top-0 z-40 border-b border-[#1f2b23] bg-[#0a0d0a]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <a href="#topo" className="flex shrink-0 items-center gap-3">
-            <span className="relative block h-11 w-11 overflow-hidden rounded-full ring-1 ring-[#2c4a37]">
-              <Image
-                src="/logo-gordao.jpg"
-                alt="Gordão HeadShop"
-                fill
-                sizes="44px"
-                className="object-cover"
-                priority
-              />
-            </span>
-            <span className="hidden font-display text-lg tracking-wide text-[#f3efe3] sm:block">
-              GORDÃO <span className="text-[#4caf6d]">HEADSHOP</span>
-            </span>
-          </a>
-
-          <div className="relative ml-2 hidden flex-1 sm:block">
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6f8a78]" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar tabaco, sedas, piteiras…"
-              className="w-full rounded-full border border-[#1f2b23] bg-[#10150f] py-2.5 pl-10 pr-4 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none transition focus:border-[#4caf6d]"
-            />
-          </div>
-
-          <div className="flex flex-1 items-center gap-2 sm:hidden">
-            <div className="relative w-full">
-              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6f8a78]" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar…"
-                className="w-full rounded-full border border-[#1f2b23] bg-[#10150f] py-2 pl-9 pr-3 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
-              />
-            </div>
-          </div>
-
-          <button
-        type="button"
-            onClick={() => setCartOpen(true)}
-            aria-label="Abrir carrinho"
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1f2b23] bg-[#10150f] text-[#f3efe3] transition hover:border-[#4caf6d] hover:text-[#4caf6d]"
-          >
-            <IconCart className="h-5 w-5" />
-            {cartCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#4caf6d] px-1 text-[11px] font-semibold text-[#0a0d0a]">
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* ---------------- Menu de categorias ---------------- */}
-        <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8">
-          <CategoryPill
-            label="Tudo"
-            active={activeCategory === "todos"}
-            onClick={() => setActiveCategory("todos")}
-          />
-          {CATEGORIES.map((c) => (
-            <CategoryPill
-              key={c.id}
-              label={c.label}
-              active={activeCategory === c.id}
-              onClick={() => setActiveCategory(c.id)}
-            />
-          ))}
-        </nav>
-      </header>
+      <Header
+        query={query}
+        onQueryChange={setQuery}
+        cartCount={cartCount}
+        onCartClick={() => setCartOpen(true)}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+        categories={CATEGORIES}
+      />
 
       {/* ---------------- Hero ---------------- */}
       <section id="topo" className="relative overflow-hidden border-b border-[#1f2b23]">
@@ -498,27 +415,7 @@ export default function GordaoHeadShopPage() {
         </div>
       </section>
 
-      {/* ---------------- Footer ---------------- */}
-      <footer className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-6 border-t border-[#1f2b23] pt-8 sm:flex-row">
-          <div className="flex items-center gap-3">
-            <span className="relative block h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#2c4a37]">
-              <Image src="/logo-gordao.jpg" alt="Gordão HeadShop" fill className="object-cover" />
-            </span>
-            <div>
-              <span className="block font-display text-sm tracking-wide text-[#7c9c88]">
-                GORDÃO HEADSHOP © {new Date().getFullYear()}
-              </span>
-              <span className="block text-xs text-[#5f7767]">
-                Rua Joaquim Felício, 153 — Parque Alvorada
-              </span>
-            </div>
-          </div>
-          <p className="text-xs text-[#4f6558]">
-            Venda proibida para menores de 18 anos. Produtos de uso adulto.
-          </p>
-        </div>
-      </footer>
+      <Footer />
 
       {/* ---------------- Botão flutuante WhatsApp ---------------- */}
       <a
@@ -577,34 +474,28 @@ export default function GordaoHeadShopPage() {
 /* Subcomponentes                                                      */
 /* ------------------------------------------------------------------ */
 
-function CategoryPill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-        type="button"
-      onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-        active
-          ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-          : "border-[#1f2b23] bg-transparent text-[#8ea395] hover:border-[#2c4a37] hover:text-[#f3efe3]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
   return (
     <div className="group flex flex-col justify-between rounded-2xl border border-[#1f2b23] bg-[#10150f] p-5 transition hover:border-[#2c4a37]">
       <div>
+        {/* Foto real do produto (catálogo salvo de meucomercio.com.br/gordaoheadshop).
+            Produtos sem foto cadastrada lá caem no ícone de folha como placeholder. */}
+        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#0a0d0a]">
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 90vw"
+              className="object-contain p-2"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <IconLeaf className="h-10 w-10 text-[#2c4a37]" />
+            </div>
+          )}
+        </div>
+
         <div className="mb-3 flex items-start justify-between gap-3">
           <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
           {product.badge && (
