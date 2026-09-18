@@ -26,22 +26,29 @@ import { QrCode, CreditCard, ShieldCheck, Lock, ArrowRight, Loader2 } from "luci
 /* ------------------------------------------------------------------ */
 
 const ORDER = {
-  productName: "Kit Sessão Gordão",
-  description: "Seda king size, piteira de vidro e dichavador de alumínio.",
-  price: 89.9,
+  // Precisa existir em app/products.ts. O servidor consulta preço e estoque lá.
+  productId: "000103",
+  productName: "Alça puff",
+  description: "Item selecionado do nosso catálogo, direto pra sua sessão.",
+  price: 50,
 };
 
 /* ------------------------------------------------------------------ */
 
 function formatBRL(value: number) {
+  // OBSERVAÇÃO: transforma um número em moeda brasileira para a interface.
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export default function CheckoutPage() {
+  // OBSERVAÇÃO: página de checkout de um único produto. Os estados guardam
+  // o botão em processamento e uma eventual mensagem de erro.
   const [loadingMethod, setLoadingMethod] = useState<"pix" | "cartao" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handlePay(method: "pix" | "cartao") {
+    // OBSERVAÇÃO: pede ao servidor uma preferência; o preço não é enviado
+    // pelo navegador, pois o servidor o consulta no catálogo.
     setError(null);
     setLoadingMethod(method);
     try {
@@ -51,12 +58,10 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items: [
             {
-              title: ORDER.productName,
+              productId: ORDER.productId,
               quantity: 1,
-              unit_price: ORDER.price,
             },
           ],
-          externalReference: `checkout-${Date.now()}`,
           method,
         }),
       });
@@ -71,6 +76,7 @@ export default function CheckoutPage() {
     }
   }
 
+  // Bloco visual: cabeçalho, resumo, botões de pagamento e mensagem de erro.
   return (
     <div className="min-h-screen bg-[#0a0d0a] text-[#f3efe3] antialiased">
       <GlobalStyles />
@@ -165,6 +171,7 @@ export default function CheckoutPage() {
 }
 
 function GlobalStyles() {
+  // OBSERVAÇÃO: aplica as fontes usadas exclusivamente nesta tela de checkout.
   return (
     <style>{`
       @import url("https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap");

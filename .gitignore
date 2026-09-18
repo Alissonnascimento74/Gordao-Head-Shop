@@ -1,0 +1,15 @@
+# Dependências e arquivos gerados
+node_modules/
+.next/
+out/
+
+# Segredos locais: nunca versionar
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Arquivos do sistema e logs
+.DS_Store
+*.log
+*.tsbuildinfo
