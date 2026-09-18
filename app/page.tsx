@@ -474,52 +474,99 @@ export default function GordaoHeadShopPage() {
 /* Subcomponentes                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * ProductCard — card de produto do catálogo.
+ * ------------------------------------------------------------------
+ * Tem DUAS estruturas de layout dentro do mesmo componente, alternadas
+ * por classes responsivas do Tailwind (`md:` = telas >= 768px):
+ *
+ *   - Bloco "mobile" (`flex md:hidden`): visível só abaixo de 768px.
+ *     Layout em linha (Flexbox) — coluna de texto à esquerda (tag,
+ *     nome, descrição, preço e botão) e a foto do produto numa coluna
+ *     fixa à direita, conforme o mockup pedido.
+ *   - Bloco "desktop" (`hidden md:flex`): visível a partir de 768px —
+ *     é EXATAMENTE o layout original (foto em cima, texto embaixo),
+ *     sem nenhuma alteração.
+ *
+ * Como as classes `md:` do Tailwind compilam pra `@media (min-width: 768px)`
+ * de verdade, isso tem o mesmo efeito de escrever a media query na mão —
+ * só que reaproveitando o mesmo sistema de classes do resto do projeto,
+ * em vez de um arquivo CSS à parte.
+ *
+ * A foto aparece sempre, esteja o produto esgotado ou não — só o botão
+ * "Adicionar" fica desabilitado quando `stock === 0`.
+ */
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  return (
-    <div className="group flex flex-col justify-between rounded-2xl border border-[#1f2b23] bg-[#10150f] p-5 transition hover:border-[#2c4a37]">
-      <div>
-        {/* Foto real do produto (catálogo salvo de meucomercio.com.br/gordaoheadshop).
-            Produtos sem foto cadastrada lá caem no ícone de folha como placeholder. */}
-        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#0a0d0a]">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              sizes="(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 90vw"
-              className="object-contain p-2"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <IconLeaf className="h-10 w-10 text-[#2c4a37]" />
-            </div>
-          )}
-        </div>
+  const soldOut = product.stock === 0;
 
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
+  const image = product.imageUrl ? (
+    <Image
+      src={product.imageUrl}
+      alt={product.name}
+      fill
+      sizes="(min-width: 1024px) 22vw, (min-width: 768px) 45vw, 38vw"
+      className="object-contain p-2"
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <IconLeaf className="h-10 w-10 text-[#2c4a37]" />
+    </div>
+  );
+
+  const addButton = (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={soldOut}
+      className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-4 py-2 text-sm font-medium text-[#f3efe3] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:group-hover:border-[#2c4a37] disabled:group-hover:text-[#f3efe3]"
+    >
+      <IconPlus className="h-3.5 w-3.5" />
+      {soldOut ? "Esgotado" : "Adicionar"}
+    </button>
+  );
+
+  return (
+    <div className="group rounded-2xl border border-[#1f2b23] bg-[#10150f] p-5 transition hover:border-[#2c4a37]">
+      {/* ---- Layout mobile (< 768px): texto à esquerda, foto à direita ---- */}
+      <div className="flex gap-3 md:hidden">
+        <div className="flex min-w-0 flex-1 flex-col text-right">
           {product.badge && (
-            <span className="shrink-0 rounded-full bg-[#4caf6d]/10 px-2.5 py-1 text-[11px] font-medium text-[#4caf6d]">
+            <span className="mb-1 inline-block self-end shrink-0 rounded-full bg-[#4caf6d]/10 px-2.5 py-1 text-[11px] font-medium text-[#4caf6d]">
               {product.badge}
             </span>
           )}
+          <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
+          {product.description && (
+            <p className="mt-1 line-clamp-3 text-left text-sm text-[#8ea395]">{product.description}</p>
+          )}
+          <div className="mt-auto flex flex-col items-end gap-2 pt-3">
+            <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
+            {addButton}
+          </div>
         </div>
-        {product.description && (
-          <p className="text-sm text-[#8ea395]">{product.description}</p>
-        )}
+        <div className="relative w-[38%] shrink-0 overflow-hidden rounded-xl bg-[#0a0d0a]">{image}</div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={product.stock === 0}
-          className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-4 py-2 text-sm font-medium text-[#f3efe3] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:group-hover:border-[#2c4a37] disabled:group-hover:text-[#f3efe3]"
-        >
-          <IconPlus className="h-3.5 w-3.5" />
-          {product.stock === 0 ? "Esgotado" : "Adicionar"}
-        </button>
+      {/* ---- Layout desktop (>= 768px): igual ao original, intacto ---- */}
+      <div className="hidden md:flex md:h-full md:flex-col md:justify-between">
+        <div>
+          <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#0a0d0a]">{image}</div>
+
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
+            {product.badge && (
+              <span className="shrink-0 rounded-full bg-[#4caf6d]/10 px-2.5 py-1 text-[11px] font-medium text-[#4caf6d]">
+                {product.badge}
+              </span>
+            )}
+          </div>
+          {product.description && <p className="text-sm text-[#8ea395]">{product.description}</p>}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between">
+          <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
+          {addButton}
+        </div>
       </div>
     </div>
   );
