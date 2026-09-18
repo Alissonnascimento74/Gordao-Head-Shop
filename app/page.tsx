@@ -6,7 +6,7 @@
  * Como usar:
  * 1) Salve este arquivo como app/page.tsx no seu projeto Next.js (App Router).
  * 2) Coloque a logo enviada em /public/logo-gordao.jpg (mesmo nome usado abaixo).
- * 3) O link do WhatsApp já está configurado (WHATSAPP_LINK). Troque se precisar.
+ * 3) O número do WhatsApp já está configurado (WHATSAPP_NUMBER). Troque se precisar.
  * 4) Ajuste PRODUCTS com o catálogo real (nome, preço, categoria, imagem).
  *
  * Sem dependências externas além de Next/React/Tailwind (já usados no seu projeto).
@@ -22,7 +22,7 @@ import { PRODUCTS, type CategoryId, type Product } from "./products";
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
 
-const WHATSAPP_LINK = "https://wa.me/message/IR2OGKAK2H6ED1"; // Link oficial do WhatsApp Business do Gordão HeadShop
+const WHATSAPP_NUMBER = "5511997306428"; // Número do WhatsApp Business do Gordão HeadShop (DDI+DDD+número, só dígitos)
 
 const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: "tabaco", label: "Tabaco" },
@@ -38,7 +38,6 @@ const SLOGAN_LINE_3 = "Tudo pra sua sessão ficar o mais leve possível.";
 /* Ícones (SVG inline)                                                 */
 /* ------------------------------------------------------------------ */
 
-// OBSERVAÇÃO: os componentes Icon* abaixo renderizam os ícones SVG da interface.
 function IconSearch(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
@@ -113,19 +112,15 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cartao: "Cartão de Crédito",
 };
 
-// Código Pix copia e cola. Ele é exibido/copiado para que o cliente faça o pagamento no banco.
-const PIX_KEY = "00020101021126810014BR.GOV.BCB.PIX2559pix-qr.mercadopago.com/instore/ol/v2/3Z8aNGvLMp55e562Zlolc35204000053039865802BR5915Comida e bebida6009SAO PAULO62080504mpis63046F4F";
-
-// Link de pagamento do Mercado Pago aberto após o pedido ser enviado ao WhatsApp.
-const PIX_REDIRECT_URL = "https://link.mercadopago.com.br/gordaoheadshop";
+const PIX_KEY =
+  "00020101021126810014BR.GOV.BCB.PIX2559pix-qr.mercadopago.com/instore/ol/v2/3Z8aNGvLMp55e562Zlolc35204000053039865802BR5915Comida e bebida6009SAO PAULO62080504mpis63046F4F";
+const CARD_PAYMENT_LINK = "https://link.mercadopago.com.br/gordaoheadshop";
 
 function formatBRL(value: number) {
-  // OBSERVAÇÃO: exibe preços no padrão brasileiro.
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function formatCEP(value: string) {
-  // OBSERVAÇÃO: mantém somente números e aplica a máscara 00000-000 no CEP.
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
@@ -136,8 +131,6 @@ function formatCEP(value: string) {
 /* ------------------------------------------------------------------ */
 
 export default function GordaoHeadShopPage() {
-  // OBSERVAÇÃO: página principal. Este bloco concentra os estados do catálogo,
-  // carrinho, formulário de entrega e andamento do pagamento.
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -149,8 +142,7 @@ export default function GordaoHeadShopPage() {
   const [cep, setCep] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [pixNotice, setPixNotice] = useState(false);
-  const [cardLoading, setCardLoading] = useState(false);
-  const [cardError, setCardError] = useState<string | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
 
   useEffect(() => {
@@ -170,7 +162,6 @@ export default function GordaoHeadShopPage() {
   const cartTotal = cart.reduce((sum, item) => sum + item.qty * item.product.price, 0);
 
   function addToCart(product: Product) {
-    // OBSERVAÇÃO: adiciona uma unidade ou aumenta a quantidade já no carrinho.
     if (product.stock === 0) return;
     setCart((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
@@ -182,7 +173,6 @@ export default function GordaoHeadShopPage() {
   }
 
   function changeQty(productId: string, delta: number) {
-    // OBSERVAÇÃO: aumenta ou diminui um item, respeitando o estoque disponível.
     setCart((prev) =>
       prev
         .map((i) => (i.product.id === productId ? { ...i, qty: i.qty + delta } : i))
@@ -191,12 +181,10 @@ export default function GordaoHeadShopPage() {
   }
 
   function removeFromCart(productId: string) {
-    // OBSERVAÇÃO: remove completamente o produto selecionado do carrinho.
     setCart((prev) => prev.filter((i) => i.product.id !== productId));
   }
 
   function buildWhatsAppMessage() {
-    // OBSERVAÇÃO: monta o texto detalhado que será enviado ao WhatsApp.
     const lines: string[] = [];
     lines.push("🛒 *Novo Pedido — Gordão HeadShop*");
     lines.push("");
@@ -214,12 +202,15 @@ export default function GordaoHeadShopPage() {
       lines.push(`Endereço: ${street || "-"}, nº ${number || "-"}`);
       lines.push(`CEP: ${cep || "-"}`);
     }
-    lines.push("Pagamento: Pix.");
+    lines.push(`Pagamento: ${PAYMENT_LABELS[paymentMethod]}`);
+    if (paymentMethod === "pix") {
+      lines.push("");
+      lines.push("Comprovante do Pix: vou enviar aqui em seguida.");
+    }
     return lines.join("\n");
   }
 
   function isFormValid() {
-    // OBSERVAÇÃO: exige nome e, quando há entrega, os dados mínimos de endereço.
     if (!customerName.trim()) return false;
     if (deliveryType === "entrega" && (!street.trim() || !number.trim() || !cep.trim())) {
       return false;
@@ -228,65 +219,34 @@ export default function GordaoHeadShopPage() {
   }
 
   function sendToWhatsApp() {
-    // OBSERVAÇÃO: abre o WhatsApp com a mensagem do pedido já preenchida.
     if (cart.length === 0 || !isFormValid()) return;
     const text = encodeURIComponent(buildWhatsAppMessage());
-    window.open(`${WHATSAPP_LINK}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   }
 
-  function finishPixAndSend() {
-    // OBSERVAÇÃO: abre a mensagem do pedido no WhatsApp e, nesta mesma aba,
-    // redireciona o cliente para o link de pagamento Pix do Mercado Pago.
-    if (cart.length === 0 || !isFormValid()) return;
-    sendToWhatsApp();
-    setCartOpen(false);
-    window.location.assign(PIX_REDIRECT_URL);
-  }
-
-  async function copyPixKeyAndSend() {
-    // OBSERVAÇÃO: copia a chave Pix, envia o pedido ao WhatsApp e mostra um aviso.
-    if (cart.length === 0 || !isFormValid()) return;
+  async function copyPixCode() {
     try {
       await navigator.clipboard.writeText(PIX_KEY);
     } catch {
-      // clipboard indisponível (ex: contexto não seguro) — segue o fluxo mesmo assim
+      // clipboard indisponível (ex: contexto não seguro)
     }
+    setPixCopied(true);
+    window.setTimeout(() => setPixCopied(false), 3000);
+  }
+
+  function confirmPixPayment() {
+    if (cart.length === 0 || !isFormValid()) return;
     sendToWhatsApp();
     setCartOpen(false);
     setPixNotice(true);
     window.setTimeout(() => setPixNotice(false), 6000);
   }
 
-  async function payWithCard() {
-    // OBSERVAÇÃO: envia somente IDs e quantidades à API; ela valida preço e estoque
-    // no servidor antes de redirecionar o cliente ao checkout do Mercado Pago.
+  function payWithCard() {
     if (cart.length === 0 || !isFormValid()) return;
-    setCardError(null);
-    setCardLoading(true);
-    try {
-      const response = await fetch("/api/create-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map((item) => ({
-            productId: item.product.id,
-            quantity: item.qty,
-          })),
-          payerName: customerName,
-          method: "cartao",
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.init_point) {
-        throw new Error(data.error || "Não foi possível iniciar o pagamento.");
-      }
-      window.location.href = data.init_point;
-    } catch (err) {
-      setCardError(
-        err instanceof Error ? err.message : "Não foi possível iniciar o pagamento."
-      );
-      setCardLoading(false);
-    }
+    sendToWhatsApp();
+    window.open(CARD_PAYMENT_LINK, "_blank");
+    setCartOpen(false);
   }
 
   return (
@@ -494,7 +454,7 @@ export default function GordaoHeadShopPage() {
 
       {/* ---------------- Botão flutuante WhatsApp ---------------- */}
       <a
-        href={WHATSAPP_LINK}
+        href={`https://wa.me/${WHATSAPP_NUMBER}`}
         target="_blank"
         rel="noreferrer"
         aria-label="Falar no WhatsApp"
@@ -503,20 +463,18 @@ export default function GordaoHeadShopPage() {
         <IconWhatsApp className="h-7 w-7" />
       </a>
 
-      {/* ---------------- Aviso pós-Pix (desativado junto ao caixa) ---------------- */}
+      {/* ---------------- Aviso pós-Pix ---------------- */}
       {pixNotice && (
         <div className="fixed bottom-24 right-5 z-40 max-w-xs rounded-2xl border border-[#4caf6d]/40 bg-[#10150f] p-4 text-sm text-[#f3efe3] shadow-lg shadow-black/40">
-          <p className="font-medium text-[#4caf6d]">Chave Pix copiada!</p>
+          <p className="font-medium text-[#4caf6d]">Enviar comprovante no WhatsApp</p>
           <p className="mt-1 text-[#b7c8bb]">
-            Agora é só colar no seu banco e enviar o comprovante aqui pelo WhatsApp pra
-            confirmarmos seu pedido.
+            O pedido só será montado após a confirmação do pagamento — manda o comprovante lá
+            no WhatsApp assim que pagar.
           </p>
         </div>
       )}
 
       {/* ---------------- Carrinho (drawer) ---------------- */}
-      {/* Caixa desativado: não passamos os controles de Pix/cartão para o carrinho.
-          As funções originais permanecem acima para uma reativação futura. */}
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
@@ -534,9 +492,14 @@ export default function GordaoHeadShopPage() {
         setNumber={setNumber}
         cep={cep}
         setCep={setCep}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
         canSend={isFormValid() && cart.length > 0}
         onSend={sendToWhatsApp}
-        onFinishPix={finishPixAndSend}
+        onCopyPix={copyPixCode}
+        pixCopied={pixCopied}
+        onConfirmPix={confirmPixPayment}
+        onPayCard={payWithCard}
       />
     </div>
   );
@@ -547,7 +510,6 @@ export default function GordaoHeadShopPage() {
 /* ------------------------------------------------------------------ */
 
 function CategoryPill({
-  // OBSERVAÇÃO: botão reutilizável que troca o filtro de categoria do catálogo.
   label,
   active,
   onClick,
@@ -572,7 +534,6 @@ function CategoryPill({
 }
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  // OBSERVAÇÃO: cartão visual de um produto, com preço, estoque e ação de adicionar.
   return (
     <div className="group flex flex-col justify-between rounded-2xl border border-[#1f2b23] bg-[#10150f] p-5 transition hover:border-[#2c4a37]">
       <div>
@@ -606,7 +567,6 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
 }
 
 function SmokeBackground() {
-  // OBSERVAÇÃO: elementos decorativos de fundo; não contém lógica de negócio.
   // Uma única camada de "fumaça" animada, discreta, atrás do hero.
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -618,7 +578,6 @@ function SmokeBackground() {
 }
 
 function CartDrawer({
-  // OBSERVAÇÃO: painel lateral do carrinho e formulário de finalização do pedido.
   open,
   onClose,
   cart,
@@ -635,9 +594,14 @@ function CartDrawer({
   setNumber,
   cep,
   setCep,
+  paymentMethod,
+  setPaymentMethod,
   canSend,
   onSend,
-  onFinishPix,
+  onCopyPix,
+  pixCopied,
+  onConfirmPix,
+  onPayCard,
 }: {
   open: boolean;
   onClose: () => void;
@@ -655,9 +619,14 @@ function CartDrawer({
   setNumber: (v: string) => void;
   cep: string;
   setCep: (v: string) => void;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (v: PaymentMethod) => void;
   canSend: boolean;
   onSend: () => void;
-  onFinishPix: () => void;
+  onCopyPix: () => void;
+  pixCopied: boolean;
+  onConfirmPix: () => void;
+  onPayCard: () => void;
 }) {
   return (
     <>
@@ -734,9 +703,6 @@ function CartDrawer({
 
         {cart.length > 0 && (
           <div className="space-y-4 border-t border-[#1f2b23] px-5 py-4">
-            {/* Caixa desativado: a seleção Pix/cartão e o checkout Mercado Pago
-                foram preservados no arquivo, mas não são renderizados. */}
-            {/*
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">Nome</label>
               <input
@@ -831,14 +797,18 @@ function CartDrawer({
             </div>
 
             {paymentMethod === "pix" && (
-              <div className="rounded-lg border border-[#1f2b23] bg-[#10150f] p-3">
-                <p className="text-xs font-medium text-[#8ea395]">Chave Pix</p>
-                <p className="mt-1 break-all font-display text-sm text-[#f3efe3]">{PIX_KEY}</p>
-                <p className="mt-2 text-xs text-[#7c9c88]">
-                  Ao copiar, seu pedido é enviado pro WhatsApp automaticamente — é só mandar o
-                  comprovante lá pra confirmarmos.
+              <button
+                type="button"
+                onClick={onCopyPix}
+                disabled={!canSend}
+                className="w-full rounded-lg border border-[#1f2b23] bg-[#10150f] p-3 text-left transition hover:border-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <p className="flex items-center justify-between text-xs font-medium text-[#8ea395]">
+                  Código Pix Copia e Cola
+                  <span className="text-[#4caf6d]">{pixCopied ? "Copiado!" : "Toque pra copiar"}</span>
                 </p>
-              </div>
+                <p className="mt-1 break-all font-mono text-xs text-[#f3efe3]">{PIX_KEY}</p>
+              </button>
             )}
 
             <div className="flex items-center justify-between pt-1 text-sm">
@@ -847,122 +817,30 @@ function CartDrawer({
             </div>
 
             {paymentMethod === "pix" ? (
-              <button
-                type="button"
-                onClick={onCopyPix}
-                disabled={!canSend}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#4caf6d]"
-              >
-                Copiar chave Pix e enviar pedido
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={onConfirmPix}
+                  disabled={!canSend}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#4caf6d]"
+                >
+                  Já paguei — enviar comprovante no WhatsApp
+                </button>
+                <p className="text-center text-xs text-[#7c9c88]">
+                  Copie o código acima, pague no seu banco e só depois confirme aqui. O pedido só
+                  é montado após a confirmação do pagamento.
+                </p>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={onPayCard}
-                disabled={!canSend || cardLoading}
+                disabled={!canSend}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#4caf6d]"
               >
-                {cardLoading ? (
-                  "Preparando pagamento..."
-                ) : (
-                  "Pagar com Cartão"
-                )}
+                Pagar com Cartão
               </button>
             )}
-            {cardError && (
-              <p className="text-center text-xs text-[#e08585]">{cardError}</p>
-            )}
-            */}
-
-            {/* Pix ativo: estes campos ficam fora do bloco de caixa desativado. */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">Nome</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Seu nome"
-                className="w-full rounded-lg border border-[#1f2b23] bg-[#10150f] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">Como quer receber?</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryType("retirada")}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                    deliveryType === "retirada"
-                      ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-                      : "border-[#1f2b23] text-[#8ea395] hover:border-[#2c4a37]"
-                  }`}
-                >
-                  Retirada no local
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeliveryType("entrega")}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                    deliveryType === "entrega"
-                      ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-                      : "border-[#1f2b23] text-[#8ea395] hover:border-[#2c4a37]"
-                  }`}
-                >
-                  Entrega
-                </button>
-              </div>
-            </div>
-
-            {deliveryType === "entrega" && (
-              <div className="space-y-2 rounded-lg border border-[#1f2b23] bg-[#10150f] p-3">
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  placeholder="Endereço (rua, bairro)"
-                  className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={number}
-                    onChange={(e) => setNumber(e.target.value)}
-                    placeholder="Número"
-                    className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
-                  />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={cep}
-                    onChange={(e) => setCep(formatCEP(e.target.value))}
-                    placeholder="CEP"
-                    maxLength={9}
-                    className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-lg border border-[#4caf6d]/40 bg-[#4caf6d]/10 p-3">
-              <p className="text-sm font-medium text-[#4caf6d]">Pagamento via Pix</p>
-              <p className="mt-1 text-xs text-[#b7c8bb]">Ao finalizar, o pedido segue para o WhatsApp e o checkout Pix será aberto.</p>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 text-sm">
-              <span className="text-[#8ea395]">Total</span>
-              <span className="font-display text-xl text-[#f3efe3]">{formatBRL(total)}</span>
-            </div>
-
-            {/* Finalização ativa: WhatsApp em nova aba e checkout Pix nesta aba. */}
-            <button
-              type="button"
-              onClick={onFinishPix}
-              disabled={!canSend}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#4caf6d]"
-            >
-              Finalizar pedido com Pix
-            </button>
             {!canSend && (
               <p className="text-center text-xs text-[#7c9c88]">
                 Preencha seu nome{deliveryType === "entrega" ? " e o endereço completo" : ""} pra continuar.
@@ -976,7 +854,6 @@ function CartDrawer({
 }
 
 function GlobalStyles() {
-  // OBSERVAÇÃO: estilos globais e fontes usados pela página principal.
   return (
     <style jsx global>{`
       @import url("https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap");
