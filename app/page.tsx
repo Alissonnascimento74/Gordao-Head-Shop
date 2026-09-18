@@ -18,6 +18,12 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { PRODUCTS, type CategoryId, type Product } from "./products";
 
+const FEATURED_PRODUCTS: { id: string; image: string }[] = [
+  { id: "000046-1", image: "/products/bandeja-narcos.jpg" }, // Bandeja Narcos
+  { id: "000075", image: "/products/rick-and-morty-tray.jpg" }, // Case Rick and Morty
+  { id: "000300-1", image: "/products/vault77-bag.jpg" }, // Bag Vault transversal
+];
+
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
@@ -385,6 +391,68 @@ export default function GordaoHeadShopPage() {
                 priority
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- Direto da loja (destaques com foto) ---------------- */}
+      <section className="border-b border-[#1f2b23] bg-[#0d120e] py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-display text-xl text-[#f3efe3] sm:text-2xl">Direto da loja</h2>
+          <p className="mt-1 text-sm text-[#7c9c88]">Peças reais, tiradas aqui na Gordão.</p>
+
+          <div className="mt-5 -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+            {FEATURED_PRODUCTS.map((featured) => {
+              const product = PRODUCTS.find((p) => p.id === featured.id);
+              if (!product) return null;
+              const outOfStock = product.stock === 0;
+              return (
+                <div
+                  key={product.id}
+                  className="relative w-[75%] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#1f2b23] bg-[#10150f] sm:w-[45%] lg:w-[31%]"
+                >
+                  <div className="relative aspect-square w-full">
+                    <Image
+                      src={featured.image}
+                      alt={product.name}
+                      fill
+                      sizes="(min-width: 1024px) 31vw, (min-width: 640px) 45vw, 75vw"
+                      className="object-cover"
+                    />
+                    {product.badge && (
+                      <span
+                        className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                          outOfStock
+                            ? "bg-[#0a0d0a]/80 text-[#e08585]"
+                            : "bg-[#0a0d0a]/80 text-[#4caf6d]"
+                        }`}
+                      >
+                        {product.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-display text-sm leading-snug text-[#f3efe3]">
+                      {product.name}
+                    </h3>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="font-display text-base text-[#f3efe3]">
+                        {formatBRL(product.price)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => addToCart(product)}
+                        disabled={outOfStock}
+                        className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-3.5 py-1.5 text-xs font-medium text-[#f3efe3] transition hover:border-[#4caf6d] hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#2c4a37] disabled:hover:text-[#f3efe3]"
+                      >
+                        <IconPlus className="h-3 w-3" />
+                        {outOfStock ? "Esgotado" : "Adicionar"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
