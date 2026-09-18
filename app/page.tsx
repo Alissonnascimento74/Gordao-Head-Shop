@@ -16,9 +16,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { PRODUCTS, type CategoryId, type Product } from "./products";
+import { PRODUCTS, type Product } from "./products";
 import Header from "@/components/storefront/Header";
 import Footer from "@/components/storefront/Footer";
+import { getAvailableCategories, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 
 const FEATURED_PRODUCTS: { id: string; image: string }[] = [
   { id: "000046-1", image: "/products/bandeja-narcos.jpg" }, // Bandeja Narcos
@@ -32,11 +33,11 @@ const FEATURED_PRODUCTS: { id: string; image: string }[] = [
 
 const WHATSAPP_NUMBER = "5511997306428"; // Número do WhatsApp Business do Gordão HeadShop (DDI+DDD+número, só dígitos)
 
-const CATEGORIES: { id: CategoryId; label: string }[] = [
-  { id: "tabaco", label: "Tabaco" },
-  { id: "sedas", label: "Sedas e Piteiras" },
-  { id: "acessorios", label: "Acessórios" },
-];
+// Categorias calculadas a partir do NOME de cada produto (utils/categoryParser.ts),
+// a mesma inteligência usada no Painel Admin e na Vitrine de demonstração — troca
+// as 3 categorias fixas de antes (Tabaco/Sedas e Piteiras/Acessórios) por todas as
+// que realmente aparecem no catálogo de 482 produtos.
+const CATEGORIES: { id: CategoryId; label: string }[] = getAvailableCategories(PRODUCTS.map((p) => p.name));
 
 const SLOGAN_LINE_1 = "E se você não gosta,";
 const SLOGAN_LINE_2 = "conhece alguém que gosta.";
@@ -141,7 +142,7 @@ export default function GordaoHeadShopPage() {
 
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((p) => {
-      const matchesCategory = activeCategory === "todos" || p.category === activeCategory;
+      const matchesCategory = activeCategory === "todos" || parseProductCategory(p.name) === activeCategory;
       const matchesQuery = p.name.toLowerCase().includes(query.trim().toLowerCase());
       return matchesCategory && matchesQuery;
     });

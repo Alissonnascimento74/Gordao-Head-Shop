@@ -18,7 +18,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Sparkles, Star, X } from "lucide-react";
+import { Leaf, Sparkles, Star, X } from "lucide-react";
 import type { AdminProduct } from "@/lib/admin/types";
 
 function formatCurrency(value: number) {
@@ -73,8 +73,12 @@ export default function PromotionsClient({ initialProducts }: { initialProducts:
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {featuredProducts.map((product) => (
               <div key={product.id} className="group relative overflow-hidden rounded-xl border border-slate-200">
-                <div className="relative aspect-square bg-slate-100">
-                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                <div className="relative flex aspect-square items-center justify-center bg-slate-100">
+                  {product.imageUrl ? (
+                    <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                  ) : (
+                    <Leaf className="h-8 w-8 text-slate-300" />
+                  )}
                   {product.promoLabel && (
                     <span className="absolute left-2 top-2 rounded-full bg-brand-green px-2 py-0.5 text-[11px] font-semibold text-brand-darker">
                       {product.promoLabel}
@@ -108,8 +112,12 @@ export default function PromotionsClient({ initialProducts }: { initialProducts:
                 <tr key={product.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                        <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                        {product.imageUrl ? (
+                          <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                        ) : (
+                          <Leaf className="h-4 w-4 text-slate-300" />
+                        )}
                       </div>
                       <p className="font-medium text-slate-700">{product.name}</p>
                     </div>

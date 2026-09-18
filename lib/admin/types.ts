@@ -4,7 +4,8 @@
 export type AdminProduct = {
   id: string;
   name: string;
-  imageUrl: string;
+  /** Ausente = produto sem foto cadastrada (cai num ícone de placeholder). */
+  imageUrl?: string;
   price: number;
   stock: number;
   soldOut: boolean;

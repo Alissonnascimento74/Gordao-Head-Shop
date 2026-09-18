@@ -5,80 +5,37 @@
  * descrevem o formato esperado.
  */
 
+import { PRODUCTS as REAL_PRODUCTS } from "@/app/products";
 import type { AdminProduct, Order } from "./types";
 
-export const MOCK_PRODUCTS: AdminProduct[] = [
-  {
-    id: "000103",
-    name: "Alça puff",
-    imageUrl: "/products/vault77-bag.jpg",
-    price: 50.0,
-    stock: 3,
-    soldOut: false,
-  },
-  {
-    id: "000246-1",
-    name: "Haste de limpeza",
-    imageUrl: "/products/vault77-bag.jpg",
-    price: 5.0,
-    stock: 37,
-    soldOut: false,
-  },
-  {
-    id: "000298-1",
-    name: "Bag Vault pequena",
-    imageUrl: "/products/vault77-bag.jpg",
-    price: 110.0,
-    stock: 2,
-    soldOut: false,
-    featured: true,
-    promoLabel: "Últimas unidades",
-  },
-  {
-    id: "000046-1",
-    name: "Bandeja Narcos",
-    imageUrl: "/products/bandeja-narcos.jpg",
-    price: 65.0,
-    stock: 0,
-    soldOut: true,
-  },
-  {
-    id: "000075",
-    name: "Case Rick and Morty",
-    imageUrl: "/products/rick-and-morty-tray.jpg",
-    price: 80.0,
-    stock: 5,
-    soldOut: false,
-    featured: true,
-    promoLabel: "Mais vendido",
-  },
-  {
-    id: "000512",
-    name: "Seda King Size Extra",
-    imageUrl: "/products/vault77-bag.jpg",
-    price: 12.0,
-    stock: 48,
-    soldOut: false,
-  },
-  {
-    id: "000601",
-    name: "Piteira de vidro",
-    imageUrl: "/products/vault77-bag.jpg",
-    price: 18.0,
-    stock: 4,
-    soldOut: false,
-  },
-  {
-    id: "000730",
-    name: "Tabaco premiado 50g",
-    imageUrl: "/products/bandeja-narcos.jpg",
-    price: 32.0,
-    stock: 1,
-    soldOut: false,
-    featured: true,
-    promoLabel: "10% OFF",
-  },
-];
+// Produtos em destaque/promoção de exemplo (ver /admin/promocoes) — só pra
+// não abrir a tela vazia na primeira vez. Qualquer produto pode ser
+// marcado/desmarcado depois, direto na tela.
+const SEED_FEATURED: Record<string, string> = {
+  "000298-1": "Últimas unidades", // Bag Vault pequena
+  "000075": "Mais vendido", // Case Rick and Morty
+  "000730": "10% OFF", // Tabaco premiado 50g
+};
+
+// O Admin gerencia o MESMO catálogo de 482 produtos da loja de verdade
+// (app/products.ts, já com as fotos reais importadas do Nex) — antes disso
+// existia uma lista separada com só 8 itens de exemplo, por isso nem todo
+// produto aparecia aqui. Continua tudo em memória (useState nas telas),
+// então editar aqui não muda o arquivo real nem a loja — é só pra você
+// visualizar/testar o painel com o catálogo completo.
+export const MOCK_PRODUCTS: AdminProduct[] = REAL_PRODUCTS.map((product) => {
+  const stock = product.stock ?? 0;
+  return {
+    id: product.id,
+    name: product.name,
+    imageUrl: product.imageUrl,
+    price: product.price,
+    stock,
+    soldOut: stock <= 0,
+    featured: product.id in SEED_FEATURED,
+    promoLabel: SEED_FEATURED[product.id],
+  };
+});
 
 export const MOCK_ORDERS: Order[] = [
   {

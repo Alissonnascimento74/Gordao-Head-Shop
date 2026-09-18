@@ -16,7 +16,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Search, ShoppingCart } from "lucide-react";
-import type { CategoryId } from "@/app/products";
+import type { CategoryId } from "@/utils/categoryParser";
 import { useSecretAdminAccess } from "@/hooks/useSecretAdminAccess";
 
 type HeaderProps = {
