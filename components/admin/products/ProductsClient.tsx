@@ -16,7 +16,7 @@
  * (não grava no arquivo real nem na loja, ainda não existe backend).
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Leaf, Minus, Pencil, Plus, PlusCircle } from "lucide-react";
 import type { AdminProduct } from "@/lib/admin/types";
@@ -39,6 +39,14 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
   // Produto sendo editado no momento (null = modal está no modo "adicionar").
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>(TODOS);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Ao trocar de categoria, rola pro topo da tabela — assim quem já tinha
+  // descido a lista não fica olhando pro meio de resultados diferentes.
+  function handleCategoryChange(category: CategoryFilter) {
+    setActiveCategory(category);
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   /**
    * Aumenta ou diminui o estoque de um produto em `delta` unidades
@@ -119,9 +127,9 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
         </button>
       </div>
 
-      <CategoryTabs categories={categoryTabs} active={activeCategory} onChange={setActiveCategory} />
+      <CategoryTabs categories={categoryTabs} active={activeCategory} onChange={handleCategoryChange} />
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div ref={tableRef} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm scroll-mt-4">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>

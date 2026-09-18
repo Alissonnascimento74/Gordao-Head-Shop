@@ -14,7 +14,7 @@
  * fluxo de carrinho via WhatsApp.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import CategoryTabs from "@/components/CategoryTabs";
@@ -30,6 +30,14 @@ type CategoryFilter = CategoryId | typeof TODOS;
 export default function VitrinePage() {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>(TODOS);
   const [cartCount, setCartCount] = useState(0);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Ao trocar de categoria, rola pro topo do grid — assim quem já tinha
+  // descido a lista não fica olhando pro meio de resultados diferentes.
+  function handleCategoryChange(category: CategoryFilter) {
+    setActiveCategory(category);
+    gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // Só recalcula a lista de abas quando o catálogo muda (nunca muda aqui,
   // já que é mockado, mas é o padrão certo pra quando vier de uma API).
@@ -78,9 +86,11 @@ export default function VitrinePage() {
           <p className="text-sm text-slate-500">Filtre por categoria pra achar mais rápido.</p>
         </div>
 
-        <CategoryTabs categories={categoryTabs} active={activeCategory} onChange={setActiveCategory} />
+        <CategoryTabs categories={categoryTabs} active={activeCategory} onChange={handleCategoryChange} />
 
-        <ProductGrid products={visibleProducts} onAddToCart={handleAddToCart} />
+        <div ref={gridRef} className="scroll-mt-20">
+          <ProductGrid products={visibleProducts} onAddToCart={handleAddToCart} />
+        </div>
       </div>
     </main>
   );

@@ -148,6 +148,14 @@ export default function GordaoHeadShopPage() {
     });
   }, [activeCategory, query]);
 
+  // Ao trocar de categoria, rola pro topo da seção de produtos — sem isso, quem
+  // já tinha descido a página fica olhando pro meio de uma lista diferente,
+  // sem ver os primeiros itens da categoria nova.
+  function handleCategoryChange(id: CategoryId | "todos") {
+    setActiveCategory(id);
+    document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.qty * item.product.price, 0);
 
@@ -249,7 +257,7 @@ export default function GordaoHeadShopPage() {
         cartCount={cartCount}
         onCartClick={() => setCartOpen(true)}
         activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
+        onCategoryChange={handleCategoryChange}
         categories={CATEGORIES}
       />
 
@@ -376,7 +384,9 @@ export default function GordaoHeadShopPage() {
       </section>
 
       {/* ---------------- Vitrine de produtos ---------------- */}
-      <section id="produtos" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+      {/* scroll-mt: compensa a altura do Header sticky, senão ele cobre o
+          topo da seção ao rolar pra cá automaticamente (handleCategoryChange). */}
+      <section id="produtos" className="mx-auto max-w-7xl scroll-mt-28 px-4 py-14 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="font-display text-2xl text-[#f3efe3] sm:text-3xl">
