@@ -1,14 +1,19 @@
 "use client";
 
+/**
+ * ProductFormModal — modal "Adicionar novo produto" (esqueleto de formulário).
+ * ------------------------------------------------------------------
+ * A categoria não é mais escolhida à mão num <select> — ela é detectada
+ * automaticamente enquanto a pessoa digita o nome, chamando
+ * `parseProductCategory` (a mesma inteligência usada na Vitrine e na
+ * tabela de Produtos). Isso evita cadastrar um produto com a categoria
+ * errada e mostra a "inteligência" funcionando em tempo real.
+ */
+
 import { useState, type FormEvent } from "react";
 import Modal from "@/components/admin/ui/Modal";
-import type { AdminProduct, ProductCategory } from "@/lib/admin/types";
-
-const CATEGORY_OPTIONS: { value: ProductCategory; label: string }[] = [
-  { value: "tabaco", label: "Tabaco" },
-  { value: "sedas", label: "Sedas e Piteiras" },
-  { value: "acessorios", label: "Acessórios" },
-];
+import type { AdminProduct } from "@/lib/admin/types";
+import { getCategoryLabel, parseProductCategory } from "@/utils/categoryParser";
 
 type ProductFormModalProps = {
   open: boolean;
@@ -18,13 +23,15 @@ type ProductFormModalProps = {
 
 export default function ProductFormModal({ open, onClose, onSave }: ProductFormModalProps) {
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<ProductCategory>("acessorios");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
 
+  // Recalculada a cada tecla digitada — é barata (só compara texto) e é
+  // exatamente isso que demonstra a categorização automática funcionando.
+  const detectedCategory = name.trim() ? getCategoryLabel(parseProductCategory(name)) : null;
+
   function handleClose() {
     setName("");
-    setCategory("acessorios");
     setPrice("");
     setStock("");
     onClose();
@@ -37,7 +44,6 @@ export default function ProductFormModal({ open, onClose, onSave }: ProductFormM
       id: `NOVO-${Date.now()}`,
       name,
       imageUrl: "/logo-gordao.jpg",
-      category,
       price: Number(price) || 0,
       stock: Number(stock) || 0,
       soldOut: Number(stock) <= 0,
@@ -58,35 +64,24 @@ export default function ProductFormModal({ open, onClose, onSave }: ProductFormM
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
             placeholder="Ex.: Bag Vault pequena"
           />
+          {detectedCategory && (
+            <p className="mt-1 text-xs text-slate-500">
+              Categoria detectada automaticamente: <span className="font-medium text-brand-forest">{detectedCategory}</span>
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Categoria</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ProductCategory)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
-            >
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Preço (R$)</label>
-            <input
-              required
-              type="number"
-              min="0"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Preço (R$)</label>
+          <input
+            required
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
+          />
         </div>
 
         <div>

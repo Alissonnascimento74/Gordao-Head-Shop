@@ -3,12 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ClipboardList, Settings, X } from "lucide-react";
+import { LayoutDashboard, Package, ClipboardList, Megaphone, Settings, X } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/admin/promocoes", label: "Promoções", icon: Megaphone },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ];
 
