@@ -20,6 +20,7 @@
 
 import { useState } from "react";
 import { QrCode, CreditCard, ShieldCheck, Lock, ArrowRight, Loader2 } from "lucide-react";
+import LeafWatermark from "@/components/LeafWatermark";
 
 /* ------------------------------------------------------------------ */
 /* Dados do pedido exibidos no resumo — ajuste aqui                   */
@@ -72,28 +73,29 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0d0a] text-[#f3efe3] antialiased">
+    <div className="min-h-screen text-[#1f2b23] antialiased">
       <GlobalStyles />
+      <LeafWatermark />
 
       <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-12 sm:px-6">
         {/* Cabeçalho */}
-        <div className="mb-8 flex items-center gap-2 text-sm text-[#7c9c88]">
+        <div className="mb-8 flex items-center gap-2 text-sm text-[#5f7767]">
           <Lock className="h-4 w-4" />
           Checkout seguro
         </div>
 
         {/* Resumo do pedido */}
-        <div className="rounded-2xl border border-[#1f2b23] bg-[#10150f] p-6 sm:p-8">
-          <p className="text-xs font-medium text-[#7c9c88]">Resumo do pedido</p>
+        <div className="rounded-2xl border border-[#e3e6de] bg-white p-6 sm:p-8">
+          <p className="text-xs font-medium text-[#5f7767]">Resumo do pedido</p>
 
-          <h1 className="mt-3 font-display text-2xl leading-snug text-[#f3efe3] sm:text-3xl">
+          <h1 className="mt-3 font-display text-2xl leading-snug text-[#1f2b23] sm:text-3xl">
             {ORDER.productName}
           </h1>
-          <p className="mt-2 text-sm text-[#b7c8bb]">{ORDER.description}</p>
+          <p className="mt-2 text-sm text-[#5f7767]">{ORDER.description}</p>
 
-          <div className="mt-6 flex items-baseline justify-between border-t border-[#1f2b23] pt-6">
-            <span className="text-sm text-[#8ea395]">Total</span>
-            <span className="font-display text-3xl text-[#f3efe3]">
+          <div className="mt-6 flex items-baseline justify-between border-t border-[#e3e6de] pt-6">
+            <span className="text-sm text-[#5f7767]">Total</span>
+            <span className="font-display text-3xl text-[#1f2b23]">
               {formatBRL(ORDER.price)}
             </span>
           </div>
@@ -155,7 +157,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Selo de confiança */}
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[#5f7767]">
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[#8ea395]">
           <ShieldCheck className="h-4 w-4" />
           Pagamento processado com segurança pelo Mercado Pago
         </div>
@@ -175,6 +177,7 @@ function GlobalStyles() {
       }
       body {
         font-family: "Inter", sans-serif;
+        background: #ffffff;
       }
     `}</style>
   );

@@ -18,20 +18,20 @@ export default function Footer() {
 
   return (
     <footer className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex flex-col items-center justify-between gap-6 border-t border-[#1f2b23] pt-8 sm:flex-row">
+      <div className="flex flex-col items-center justify-between gap-6 border-t border-[#e3e6de] pt-8 sm:flex-row">
         <button
           type="button"
           onClick={handleSecretClick}
           className="flex items-center gap-3 border-0 bg-transparent p-0 text-left cursor-default"
         >
-          <span className="relative block h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#2c4a37]">
+          <span className="relative block h-9 w-9 overflow-hidden rounded-full ring-1 ring-[#c3cec0]">
             <Image src="/logo-gordao.jpg" alt="Gordão HeadShop" fill className="object-cover" />
           </span>
           <div>
-            <span className="block font-display text-sm tracking-wide text-[#7c9c88]">
+            <span className="block font-display text-sm tracking-wide text-[#5f7767]">
               GORDÃO HEADSHOP © {new Date().getFullYear()}
             </span>
-            <span className="block text-xs text-[#5f7767]">Rua Joaquim Felício, 153 — Parque Alvorada</span>
+            <span className="block text-xs text-[#8ea395]">Rua Joaquim Felício, 153 — Parque Alvorada</span>
           </div>
         </button>
 
@@ -40,7 +40,7 @@ export default function Footer() {
           {showAdmin && (
             <Link
               href="/admin"
-              className="animate-fadeIn rounded-full border border-[#2c4a37] px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-[#4caf6d] transition hover:border-[#4caf6d] hover:bg-[#4caf6d]/10"
+              className="animate-fadeIn rounded-full border border-[#c3cec0] px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-[#4caf6d] transition hover:border-[#4caf6d] hover:bg-[#4caf6d]/10"
             >
               Painel Admin
             </Link>

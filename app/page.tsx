@@ -19,6 +19,7 @@ import Image from "next/image";
 import { PRODUCTS, type Product } from "./products";
 import Header from "@/components/storefront/Header";
 import Footer from "@/components/storefront/Footer";
+import LeafWatermark from "@/components/LeafWatermark";
 import { getAvailableCategories, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 
 const FEATURED_PRODUCTS: { id: string; image: string }[] = [
@@ -39,9 +40,9 @@ const WHATSAPP_NUMBER = "5511997306428"; // Número do WhatsApp Business do Gord
 // que realmente aparecem no catálogo de 482 produtos.
 const CATEGORIES: { id: CategoryId; label: string }[] = getAvailableCategories(PRODUCTS.map((p) => p.name));
 
-const SLOGAN_LINE_1 = "E se você não gosta,";
+const SLOGAN_LINE_1 = "Se você não gosta,";
 const SLOGAN_LINE_2 = "conhece alguém que gosta.";
-const SLOGAN_LINE_3 = "Tudo pra sua sessão ficar o mais leve possível.";
+const SLOGAN_LINE_3 = "Tudo para sua sessão ficar mais leve.";
 
 /* ------------------------------------------------------------------ */
 /* Ícones (SVG inline)                                                 */
@@ -248,8 +249,9 @@ export default function GordaoHeadShopPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0d0a] text-[#f3efe3] antialiased selection:bg-[#4caf6d] selection:text-[#0a0d0a]">
+    <div className="min-h-screen text-[#1f2b23] antialiased selection:bg-[#4caf6d] selection:text-[#0a0d0a]">
       <GlobalStyles />
+      <LeafWatermark />
 
       <Header
         query={query}
@@ -262,29 +264,24 @@ export default function GordaoHeadShopPage() {
       />
 
       {/* ---------------- Hero ---------------- */}
-      <section id="topo" className="relative overflow-hidden border-b border-[#1f2b23]">
-        <SmokeBackground />
-
+      <section id="topo" className="relative overflow-hidden border-b border-[#e3e6de]">
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-8 lg:py-24">
           <div
             className={`transition-all duration-700 ease-out ${
               heroIn ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
             }`}
           >
-            <p className="mb-4 text-sm tracking-wide text-[#7fae8f]">
+            <p className="mb-4 text-sm tracking-wide text-[#5f7767]">
               Estabelecido em 2024 · Tabacaria &amp; headshop
             </p>
-            <h1 className="font-display text-4xl leading-[1.05] text-[#f3efe3] sm:text-5xl lg:text-6xl">
-              Tudo que sua sessão
+            <h1 className="font-display text-4xl leading-[1.05] text-[#1f2b23] sm:text-5xl lg:text-6xl">
+              {SLOGAN_LINE_1}
               <br />
               <span className="bg-gradient-to-r from-[#8fbf6f] via-[#4caf6d] to-[#1f6f4a] bg-clip-text text-transparent">
-                precisa pra ficar leve
+                {SLOGAN_LINE_2}
               </span>
             </h1>
-            <p className="mt-5 max-w-md text-base text-[#b7c8bb] sm:text-lg">
-              Tabaco selecionado, sedas que queimam direito e os acessórios que
-              fazem diferença. Curadoria de quem entende do assunto desde 2024.
-            </p>
+            <p className="mt-5 max-w-md text-base text-[#5f7767] sm:text-lg">{SLOGAN_LINE_3}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="#produtos"
@@ -294,7 +291,7 @@ export default function GordaoHeadShopPage() {
               </a>
               <a
                 href="#produtos"
-                className="text-sm font-medium text-[#b7c8bb] underline decoration-[#2c4a37] underline-offset-4 transition hover:text-[#4caf6d]"
+                className="text-sm font-medium text-[#5f7767] underline decoration-[#c3cec0] underline-offset-4 transition hover:text-[#4caf6d]"
               >
                 Conhecer o catálogo
               </a>
@@ -322,10 +319,10 @@ export default function GordaoHeadShopPage() {
       </section>
 
       {/* ---------------- Direto da loja (destaques com foto) ---------------- */}
-      <section className="border-b border-[#1f2b23] bg-[#0d120e] py-10">
+      <section className="border-b border-[#e3e6de] bg-[#f5f4ef] py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-xl text-[#f3efe3] sm:text-2xl">Direto da loja</h2>
-          <p className="mt-1 text-sm text-[#7c9c88]">Peças reais, tiradas aqui na Gordão.</p>
+          <h2 className="font-display text-xl text-[#1f2b23] sm:text-2xl">Direto da loja</h2>
+          <p className="mt-1 text-sm text-[#5f7767]">Peças reais, tiradas aqui na Gordão.</p>
 
           <div className="mt-5 -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
             {FEATURED_PRODUCTS.map((featured) => {
@@ -335,7 +332,7 @@ export default function GordaoHeadShopPage() {
               return (
                 <div
                   key={product.id}
-                  className="relative w-[75%] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#1f2b23] bg-[#10150f] sm:w-[45%] lg:w-[31%]"
+                  className="relative w-[75%] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#e3e6de] bg-white sm:w-[45%] lg:w-[31%]"
                 >
                   <div className="relative aspect-square w-full">
                     <Image
@@ -358,18 +355,18 @@ export default function GordaoHeadShopPage() {
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-display text-sm leading-snug text-[#f3efe3]">
+                    <h3 className="font-display text-sm leading-snug text-[#1f2b23]">
                       {product.name}
                     </h3>
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="font-display text-base text-[#f3efe3]">
+                      <span className="font-display text-base text-[#1f2b23]">
                         {formatBRL(product.price)}
                       </span>
                       <button
                         type="button"
                         onClick={() => addToCart(product)}
                         disabled={outOfStock}
-                        className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-3.5 py-1.5 text-xs font-medium text-[#f3efe3] transition hover:border-[#4caf6d] hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#2c4a37] disabled:hover:text-[#f3efe3]"
+                        className="flex items-center gap-1.5 rounded-full border border-[#c3cec0] px-3.5 py-1.5 text-xs font-medium text-[#1f2b23] transition hover:border-[#4caf6d] hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#c3cec0] disabled:hover:text-[#1f2b23]"
                       >
                         <IconPlus className="h-3 w-3" />
                         {outOfStock ? "Esgotado" : "Adicionar"}
@@ -389,19 +386,19 @@ export default function GordaoHeadShopPage() {
       <section id="produtos" className="mx-auto max-w-7xl scroll-mt-28 px-4 py-14 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl text-[#f3efe3] sm:text-3xl">
+            <h2 className="font-display text-2xl text-[#1f2b23] sm:text-3xl">
               {activeCategory === "todos"
                 ? "Catálogo"
                 : CATEGORIES.find((c) => c.id === activeCategory)?.label}
             </h2>
-            <p className="mt-1 text-sm text-[#7c9c88]">
+            <p className="mt-1 text-sm text-[#5f7767]">
               {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "itens"}
             </p>
           </div>
         </div>
 
         {filteredProducts.length === 0 ? (
-          <div className="rounded-2xl border border-[#1f2b23] bg-[#10150f] px-6 py-14 text-center text-[#7c9c88]">
+          <div className="rounded-2xl border border-[#e3e6de] bg-white px-6 py-14 text-center text-[#5f7767]">
             Nada encontrado com esses filtros. Tenta buscar outro termo.
           </div>
         ) : (
@@ -414,15 +411,15 @@ export default function GordaoHeadShopPage() {
       </section>
 
       {/* ---------------- Slogan ---------------- */}
-      <section className="border-y border-[#1f2b23] bg-[#0d120e]">
+      <section className="border-y border-[#e3e6de] bg-[#f5f4ef]">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
           <IconLeaf className="mx-auto mb-6 h-8 w-8 text-[#4caf6d]" />
-          <p className="font-display text-2xl leading-snug text-[#f3efe3] sm:text-3xl">
+          <p className="font-display text-2xl leading-snug text-[#1f2b23] sm:text-3xl">
             {SLOGAN_LINE_1}
             <br />
             {SLOGAN_LINE_2}
           </p>
-          <p className="mt-4 text-base text-[#7c9c88]">{SLOGAN_LINE_3}</p>
+          <p className="mt-4 text-base text-[#5f7767]">{SLOGAN_LINE_3}</p>
         </div>
       </section>
 
@@ -441,9 +438,9 @@ export default function GordaoHeadShopPage() {
 
       {/* ---------------- Aviso pós-Pix ---------------- */}
       {pixNotice && (
-        <div className="fixed bottom-24 right-5 z-40 max-w-xs rounded-2xl border border-[#4caf6d]/40 bg-[#10150f] p-4 text-sm text-[#f3efe3] shadow-lg shadow-black/40">
+        <div className="fixed bottom-24 right-5 z-40 max-w-xs rounded-2xl border border-[#4caf6d]/40 bg-white p-4 text-sm text-[#1f2b23] shadow-lg shadow-black/40">
           <p className="font-medium text-[#4caf6d]">Enviar comprovante no WhatsApp</p>
-          <p className="mt-1 text-[#b7c8bb]">
+          <p className="mt-1 text-[#5f7767]">
             O pedido só será montado após a confirmação do pagamento — manda o comprovante lá
             no WhatsApp assim que pagar.
           </p>
@@ -529,7 +526,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
       type="button"
       onClick={onAdd}
       disabled={soldOut}
-      className="flex items-center gap-1.5 rounded-full border border-[#2c4a37] px-4 py-2 text-sm font-medium text-[#f3efe3] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:group-hover:border-[#2c4a37] disabled:group-hover:text-[#f3efe3]"
+      className="flex items-center gap-1.5 rounded-full border border-[#c3cec0] px-4 py-2 text-sm font-medium text-[#1f2b23] transition group-hover:border-[#4caf6d] group-hover:text-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40 disabled:group-hover:border-[#c3cec0] disabled:group-hover:text-[#1f2b23]"
     >
       <IconPlus className="h-3.5 w-3.5" />
       {soldOut ? "Esgotado" : "Adicionar"}
@@ -537,7 +534,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
   );
 
   return (
-    <div className="group rounded-2xl border border-[#1f2b23] bg-[#10150f] p-5 transition hover:border-[#2c4a37]">
+    <div className="group rounded-2xl border border-[#e3e6de] bg-white p-5 transition hover:border-[#c3cec0]">
       {/* ---- Layout mobile (< 768px): texto à esquerda, foto à direita ---- */}
       <div className="flex gap-3 md:hidden">
         <div className="flex min-w-0 flex-1 flex-col text-right">
@@ -546,50 +543,39 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
               {product.badge}
             </span>
           )}
-          <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
+          <h3 className="font-display text-base leading-snug text-[#1f2b23]">{product.name}</h3>
           {product.description && (
-            <p className="mt-1 line-clamp-3 text-left text-sm text-[#8ea395]">{product.description}</p>
+            <p className="mt-1 line-clamp-3 text-left text-sm text-[#5f7767]">{product.description}</p>
           )}
           <div className="mt-auto flex flex-col items-end gap-2 pt-3">
-            <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
+            <span className="font-display text-lg text-[#1f2b23]">{formatBRL(product.price)}</span>
             {addButton}
           </div>
         </div>
-        <div className="relative w-[38%] shrink-0 overflow-hidden rounded-xl bg-[#0a0d0a]">{image}</div>
+        <div className="relative w-[38%] shrink-0 overflow-hidden rounded-xl bg-[#f5f4ef]">{image}</div>
       </div>
 
       {/* ---- Layout desktop (>= 768px): igual ao original, intacto ---- */}
       <div className="hidden md:flex md:h-full md:flex-col md:justify-between">
         <div>
-          <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#0a0d0a]">{image}</div>
+          <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#f5f4ef]">{image}</div>
 
           <div className="mb-3 flex items-start justify-between gap-3">
-            <h3 className="font-display text-base leading-snug text-[#f3efe3]">{product.name}</h3>
+            <h3 className="font-display text-base leading-snug text-[#1f2b23]">{product.name}</h3>
             {product.badge && (
               <span className="shrink-0 rounded-full bg-[#4caf6d]/10 px-2.5 py-1 text-[11px] font-medium text-[#4caf6d]">
                 {product.badge}
               </span>
             )}
           </div>
-          {product.description && <p className="text-sm text-[#8ea395]">{product.description}</p>}
+          {product.description && <p className="text-sm text-[#5f7767]">{product.description}</p>}
         </div>
 
         <div className="mt-6 flex items-center justify-between">
-          <span className="font-display text-lg text-[#f3efe3]">{formatBRL(product.price)}</span>
+          <span className="font-display text-lg text-[#1f2b23]">{formatBRL(product.price)}</span>
           {addButton}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SmokeBackground() {
-  // Uma única camada de "fumaça" animada, discreta, atrás do hero.
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -left-1/4 top-0 h-[140%] w-1/2 smoke-drift rounded-full bg-[#1f6f4a]/20 blur-3xl" />
-      <div className="absolute -right-1/4 top-1/4 h-[120%] w-1/2 smoke-drift-slow rounded-full bg-[#123524]/40 blur-3xl" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,transparent,#0a0d0a_75%)]" />
     </div>
   );
 }
@@ -654,17 +640,17 @@ function CartDrawer({
         }`}
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#1f2b23] bg-[#0d120e] transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-[#e3e6de] bg-white shadow-2xl transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-[#1f2b23] px-5 py-4">
-          <h2 className="font-display text-lg text-[#f3efe3]">Seu carrinho</h2>
+        <div className="flex items-center justify-between border-b border-[#e3e6de] px-5 py-4">
+          <h2 className="font-display text-lg text-[#1f2b23]">Seu carrinho</h2>
           <button
         type="button"
             onClick={onClose}
             aria-label="Fechar carrinho"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#8ea395] transition hover:bg-[#1f2b23] hover:text-[#f3efe3]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#8ea395] transition hover:bg-[#e3e6de] hover:text-[#1f2b23]"
           >
             <IconX className="h-5 w-5" />
           </button>
@@ -672,44 +658,44 @@ function CartDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {cart.length === 0 ? (
-            <p className="mt-10 text-center text-sm text-[#7c9c88]">
+            <p className="mt-10 text-center text-sm text-[#5f7767]">
               Seu carrinho está vazio. Adicione produtos no catálogo.
             </p>
           ) : (
             <ul className="space-y-4">
               {cart.map((item) => (
-                <li key={item.product.id} className="flex gap-3 border-b border-[#1f2b23] pb-4">
+                <li key={item.product.id} className="flex gap-3 border-b border-[#e3e6de] pb-4">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-[#f3efe3]">{item.product.name}</p>
-                    <p className="mt-0.5 text-xs text-[#7c9c88]">
+                    <p className="text-sm font-medium text-[#1f2b23]">{item.product.name}</p>
+                    <p className="mt-0.5 text-xs text-[#5f7767]">
                       {formatBRL(item.product.price)} / un.
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <button
         type="button"
                         onClick={() => onChangeQty(item.product.id, -1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2c4a37] text-[#f3efe3] transition hover:border-[#4caf6d]"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#c3cec0] text-[#1f2b23] transition hover:border-[#4caf6d]"
                       >
                         <IconMinus className="h-3 w-3" />
                       </button>
-                      <span className="w-5 text-center text-sm text-[#f3efe3]">{item.qty}</span>
+                      <span className="w-5 text-center text-sm text-[#1f2b23]">{item.qty}</span>
                       <button
         type="button"
                         onClick={() => onChangeQty(item.product.id, 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2c4a37] text-[#f3efe3] transition hover:border-[#4caf6d]"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#c3cec0] text-[#1f2b23] transition hover:border-[#4caf6d]"
                       >
                         <IconPlus className="h-3 w-3" />
                       </button>
                       <button
         type="button"
                         onClick={() => onRemove(item.product.id)}
-                        className="ml-auto text-xs text-[#7c9c88] underline decoration-[#2c4a37] underline-offset-2 transition hover:text-[#e08585]"
+                        className="ml-auto text-xs text-[#5f7767] underline decoration-[#c3cec0] underline-offset-2 transition hover:text-[#e08585]"
                       >
                         Remover
                       </button>
                     </div>
                   </div>
-                  <span className="shrink-0 text-sm font-medium text-[#f3efe3]">
+                  <span className="shrink-0 text-sm font-medium text-[#1f2b23]">
                     {formatBRL(item.product.price * item.qty)}
                   </span>
                 </li>
@@ -719,20 +705,20 @@ function CartDrawer({
         </div>
 
         {cart.length > 0 && (
-          <div className="space-y-4 border-t border-[#1f2b23] px-5 py-4">
+          <div className="space-y-4 border-t border-[#e3e6de] px-5 py-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">Nome</label>
+              <label className="mb-1.5 block text-xs font-medium text-[#5f7767]">Nome</label>
               <input
                 type="text"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Seu nome"
-                className="w-full rounded-lg border border-[#1f2b23] bg-[#10150f] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
+                className="w-full rounded-lg border border-[#e3e6de] bg-white px-3 py-2 text-sm text-[#1f2b23] placeholder:text-[#8ea395] outline-none focus:border-[#4caf6d]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">
+              <label className="mb-1.5 block text-xs font-medium text-[#5f7767]">
                 Como quer receber?
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -742,7 +728,7 @@ function CartDrawer({
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                     deliveryType === "retirada"
                       ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-                      : "border-[#1f2b23] text-[#8ea395] hover:border-[#2c4a37]"
+                      : "border-[#e3e6de] text-[#5f7767] hover:border-[#c3cec0]"
                   }`}
                 >
                   Retirada no local
@@ -753,7 +739,7 @@ function CartDrawer({
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                     deliveryType === "entrega"
                       ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-                      : "border-[#1f2b23] text-[#8ea395] hover:border-[#2c4a37]"
+                      : "border-[#e3e6de] text-[#5f7767] hover:border-[#c3cec0]"
                   }`}
                 >
                   Entrega
@@ -762,13 +748,13 @@ function CartDrawer({
             </div>
 
             {deliveryType === "entrega" && (
-              <div className="space-y-2 rounded-lg border border-[#1f2b23] bg-[#10150f] p-3">
+              <div className="space-y-2 rounded-lg border border-[#e3e6de] bg-[#f5f4ef] p-3">
                 <input
                   type="text"
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                   placeholder="Endereço (rua, bairro)"
-                  className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
+                  className="w-full rounded-lg border border-[#e3e6de] bg-white px-3 py-2 text-sm text-[#1f2b23] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <input
@@ -776,7 +762,7 @@ function CartDrawer({
                     value={number}
                     onChange={(e) => setNumber(e.target.value)}
                     placeholder="Número"
-                    className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
+                    className="w-full rounded-lg border border-[#e3e6de] bg-white px-3 py-2 text-sm text-[#1f2b23] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
                   />
                   <input
                     type="text"
@@ -785,14 +771,14 @@ function CartDrawer({
                     onChange={(e) => setCep(formatCEP(e.target.value))}
                     placeholder="CEP"
                     maxLength={9}
-                    className="w-full rounded-lg border border-[#1f2b23] bg-[#0a0d0a] px-3 py-2 text-sm text-[#f3efe3] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
+                    className="w-full rounded-lg border border-[#e3e6de] bg-white px-3 py-2 text-sm text-[#1f2b23] placeholder:text-[#5f7767] outline-none focus:border-[#4caf6d]"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#8ea395]">
+              <label className="mb-1.5 block text-xs font-medium text-[#5f7767]">
                 Forma de pagamento
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -804,7 +790,7 @@ function CartDrawer({
                     className={`rounded-lg border px-2 py-2 text-xs font-medium transition ${
                       paymentMethod === method
                         ? "border-[#4caf6d] bg-[#4caf6d]/10 text-[#4caf6d]"
-                        : "border-[#1f2b23] text-[#8ea395] hover:border-[#2c4a37]"
+                        : "border-[#e3e6de] text-[#5f7767] hover:border-[#c3cec0]"
                     }`}
                   >
                     {PAYMENT_LABELS[method]}
@@ -818,19 +804,19 @@ function CartDrawer({
                 type="button"
                 onClick={onCopyPix}
                 disabled={!canSend}
-                className="w-full rounded-lg border border-[#1f2b23] bg-[#10150f] p-3 text-left transition hover:border-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40"
+                className="w-full rounded-lg border border-[#e3e6de] bg-white p-3 text-left transition hover:border-[#4caf6d] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <p className="flex items-center justify-between text-xs font-medium text-[#8ea395]">
+                <p className="flex items-center justify-between text-xs font-medium text-[#5f7767]">
                   Código Pix Copia e Cola
                   <span className="text-[#4caf6d]">{pixCopied ? "Copiado!" : "Toque pra copiar"}</span>
                 </p>
-                <p className="mt-1 break-all font-mono text-xs text-[#f3efe3]">{PIX_KEY}</p>
+                <p className="mt-1 break-all font-mono text-xs text-[#1f2b23]">{PIX_KEY}</p>
               </button>
             )}
 
             <div className="flex items-center justify-between pt-1 text-sm">
-              <span className="text-[#8ea395]">Total</span>
-              <span className="font-display text-xl text-[#f3efe3]">{formatBRL(total)}</span>
+              <span className="text-[#5f7767]">Total</span>
+              <span className="font-display text-xl text-[#1f2b23]">{formatBRL(total)}</span>
             </div>
 
             {paymentMethod === "pix" ? (
@@ -843,7 +829,7 @@ function CartDrawer({
                 >
                   Já paguei — enviar comprovante no WhatsApp
                 </button>
-                <p className="text-center text-xs text-[#7c9c88]">
+                <p className="text-center text-xs text-[#5f7767]">
                   Copie o código acima, pague no seu banco e só depois confirme aqui. O pedido só
                   é montado após a confirmação do pagamento.
                 </p>
@@ -859,7 +845,7 @@ function CartDrawer({
               </button>
             )}
             {!canSend && (
-              <p className="text-center text-xs text-[#7c9c88]">
+              <p className="text-center text-xs text-[#5f7767]">
                 Preencha seu nome{deliveryType === "entrega" ? " e o endereço completo" : ""} pra continuar.
               </p>
             )}
@@ -883,42 +869,7 @@ function GlobalStyles() {
 
       body {
         font-family: "Inter", sans-serif;
-      }
-
-      @keyframes smokeDriftA {
-        0% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(4%, -3%) scale(1.05);
-        }
-        100% {
-          transform: translate(0, 0) scale(1);
-        }
-      }
-      @keyframes smokeDriftB {
-        0% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(-5%, 4%) scale(1.08);
-        }
-        100% {
-          transform: translate(0, 0) scale(1);
-        }
-      }
-      .smoke-drift {
-        animation: smokeDriftA 14s ease-in-out infinite;
-      }
-      .smoke-drift-slow {
-        animation: smokeDriftB 20s ease-in-out infinite;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .smoke-drift,
-        .smoke-drift-slow {
-          animation: none;
-        }
+        background: #ffffff;
       }
     `}</style>
   );
