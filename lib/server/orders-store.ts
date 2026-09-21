@@ -135,13 +135,14 @@ export async function attachMercadoPagoPreference(orderId: string, preferenceId:
 export async function updateOrderStatus(
   externalReference: string,
   status: OrderStatus,
-  extra?: { mpPaymentId?: string }
+  extra?: { mpPaymentId?: string; trackingCode?: string }
 ): Promise<Order | null> {
   if (redis) {
     const order = await redis.get<Order>(ORDER_KEY(externalReference));
     if (!order) return null;
     order.status = status;
     if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
+    if (extra?.trackingCode) order.trackingCode = extra.trackingCode;
     await redis.set(ORDER_KEY(externalReference), order);
     return order;
   }
@@ -150,6 +151,7 @@ export async function updateOrderStatus(
   if (!order) return null;
   order.status = status;
   if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
+  if (extra?.trackingCode) order.trackingCode = extra.trackingCode;
   return order;
 }
 

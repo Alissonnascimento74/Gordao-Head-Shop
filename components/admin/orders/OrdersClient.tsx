@@ -153,13 +153,24 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
   const visibleOrders = filter === "todos" ? orders : orders.filter((order) => order.status === filter);
 
-  function handleConfirmShip(orderId: string, trackingCode: string) {
+  async function handleConfirmShip(orderId: string, trackingCode: string) {
+    // Atualização otimista: a tela muda na hora, sem esperar o servidor
+    // responder. Se o POST abaixo falhar, o próximo polling (até 15s)
+    // traz de volta o status real do orders-store — não precisa de
+    // tratamento de erro mais elaborado que isso pra essa tela.
     setOrders((prev) =>
       prev.map((order) => (order.id === orderId ? { ...order, status: "despachado", trackingCode } : order))
     );
-    // TODO quando plugar banco de dados real: chamar uma rota tipo
-    // PATCH /api/orders/[id] pra persistir o despacho no servidor —
-    // hoje essa atualização só existe na memória desta aba.
+
+    try {
+      await fetch(`/api/orders/${orderId}/ship`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingCode }),
+      });
+    } catch {
+      // Falha de rede — deixa o próximo polling corrigir a tela.
+    }
   }
 
   return (
