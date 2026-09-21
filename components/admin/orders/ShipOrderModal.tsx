@@ -1,5 +1,8 @@
 "use client";
 
+// Modal que pede o código de rastreio e devolve (orderId, trackingCode)
+// pro componente pai — quem realmente marca o pedido como despachado é
+// OrdersClient.tsx (handleConfirmShip), este modal só cuida do formulário.
 import { useState, type FormEvent } from "react";
 import Modal from "@/components/admin/ui/Modal";
 import type { Order } from "@/lib/admin/types";

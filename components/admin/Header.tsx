@@ -1,5 +1,9 @@
 "use client";
 
+// Cabeçalho do painel — nome/inicial do avatar vêm de ADMIN_CREDENTIALS
+// (mock, ver lib/admin/auth-config.ts), não de uma sessão de usuário de
+// verdade. O sininho de notificações é só decorativo por enquanto (sem
+// lista/dropdown por trás).
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bell, LogOut, Menu } from "lucide-react";
