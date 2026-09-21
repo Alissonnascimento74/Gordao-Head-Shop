@@ -15,12 +15,14 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { PRODUCTS, type Product } from "./products";
 import Header from "@/components/storefront/Header";
 import Footer from "@/components/storefront/Footer";
 import LeafWatermark from "@/components/LeafWatermark";
 import { getAvailableCategories, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
+import { saveCheckoutCart } from "@/utils/checkoutCart";
 
 const FEATURED_PRODUCTS: { id: string; image: string }[] = [
   { id: "000046-1", image: "/products/bandeja-narcos.jpg" }, // Bandeja Narcos
@@ -122,6 +124,7 @@ function formatCEP(value: string) {
 /* ------------------------------------------------------------------ */
 
 export default function GordaoHeadShopPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -246,6 +249,28 @@ export default function GordaoHeadShopPage() {
     sendToWhatsApp();
     window.open(CARD_PAYMENT_LINK, "_blank");
     setCartOpen(false);
+  }
+
+  /**
+   * Leva pro checkout completo (Pix ou cartão pelo Mercado Pago, com nota
+   * fiscal de verdade dos dados do cliente) — alternativa ao fluxo atual
+   * de WhatsApp + chave Pix copiada na mão. Salva os itens no
+   * sessionStorage (utils/checkoutCart.ts) porque o carrinho é só estado
+   * React aqui, e some ao trocar de página.
+   */
+  function goToFullCheckout() {
+    if (cart.length === 0) return;
+    saveCheckoutCart(
+      cart.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.qty,
+        imageUrl: item.product.imageUrl,
+      }))
+    );
+    setCartOpen(false);
+    router.push("/checkout");
   }
 
   return (
@@ -473,6 +498,7 @@ export default function GordaoHeadShopPage() {
         pixCopied={pixCopied}
         onConfirmPix={confirmPixPayment}
         onPayCard={payWithCard}
+        onGoToFullCheckout={goToFullCheckout}
       />
     </div>
   );
@@ -605,6 +631,7 @@ function CartDrawer({
   pixCopied,
   onConfirmPix,
   onPayCard,
+  onGoToFullCheckout,
 }: {
   open: boolean;
   onClose: () => void;
@@ -630,6 +657,7 @@ function CartDrawer({
   pixCopied: boolean;
   onConfirmPix: () => void;
   onPayCard: () => void;
+  onGoToFullCheckout: () => void;
 }) {
   return (
     <>
@@ -706,6 +734,19 @@ function CartDrawer({
 
         {cart.length > 0 && (
           <div className="space-y-4 border-t border-[#e3e6de] px-5 py-4">
+            {/* Checkout completo: Pix ou cartão direto pelo Mercado Pago,
+                com nota e endereço de entrega. É o caminho recomendado —
+                o fluxo por WhatsApp abaixo continua funcionando como
+                alternativa pra quem preferir. */}
+            <button
+              type="button"
+              onClick={onGoToFullCheckout}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] active:scale-[0.98]"
+            >
+              Finalizar compra (Pix ou Cartão)
+            </button>
+            <p className="text-center text-xs text-[#8ea395]">ou continue por aqui pelo WhatsApp</p>
+
             <div>
               <label className="mb-1.5 block text-xs font-medium text-[#5f7767]">Nome</label>
               <input

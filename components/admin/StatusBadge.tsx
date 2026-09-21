@@ -9,6 +9,10 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
     label: "Pago",
     className: "bg-sky-100 text-sky-700",
   },
+  cancelado: {
+    label: "Cancelado",
+    className: "bg-red-100 text-red-700",
+  },
   separando: {
     label: "Separando",
     className: "bg-violet-100 text-violet-700",
