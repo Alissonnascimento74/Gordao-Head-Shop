@@ -70,6 +70,18 @@ const nextConfig = {
       },
     ];
   },
+  // Só afeta `next dev` (não existe mais depois do build de produção). Por
+  // padrão o Next.js "descarta" rotas de API que ficaram 60s sem uso e
+  // recompila elas do zero na próxima chamada — o que reseta o array em
+  // memória do orders-store.ts (ver seção 7 do Projeto no Obsidian). Como
+  // testar o fluxo de pagamento de verdade no Mercado Pago (preencher
+  // cartão, confirmar, etc.) sempre leva mais de 1 minuto, aumentamos essa
+  // janela pra 30 minutos só em desenvolvimento, pra conseguir testar o
+  // ciclo completo (checkout → pagamento → webhook) sem o array resetar no
+  // meio do caminho.
+  onDemandEntries: {
+    maxInactiveAge: 30 * 60 * 1000,
+  },
 };
 
 module.exports = nextConfig;
