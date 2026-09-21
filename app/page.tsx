@@ -14,7 +14,7 @@
  * ------------------------------------------------------------------
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { PRODUCTS, type Product } from "./products";
@@ -90,6 +90,14 @@ function IconLeaf(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconCheck(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Tipos de carrinho                                                   */
 /* ------------------------------------------------------------------ */
@@ -111,11 +119,27 @@ export default function GordaoHeadShopPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
+  const [addedToastVisible, setAddedToastVisible] = useState(false);
+  const addedToastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setHeroIn(true), 80);
     return () => clearTimeout(t);
   }, []);
+
+  // Some sozinho depois de 3s. Se o cliente adicionar outro produto antes
+  // disso, reinicia a contagem (clearTimeout) em vez de empilhar avisos.
+  useEffect(() => {
+    return () => {
+      if (addedToastTimeout.current) clearTimeout(addedToastTimeout.current);
+    };
+  }, []);
+
+  function showAddedToast() {
+    if (addedToastTimeout.current) clearTimeout(addedToastTimeout.current);
+    setAddedToastVisible(true);
+    addedToastTimeout.current = setTimeout(() => setAddedToastVisible(false), 3000);
+  }
 
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((p) => {
@@ -145,6 +169,7 @@ export default function GordaoHeadShopPage() {
       }
       return [...prev, { product, qty: 1 }];
     });
+    showAddedToast();
   }
 
   function changeQty(productId: string, delta: number) {
@@ -368,6 +393,9 @@ export default function GordaoHeadShopPage() {
         <IconWhatsApp className="h-7 w-7" />
       </a>
 
+      {/* ---------------- Aviso "Produto adicionado" ---------------- */}
+      <AddedToCartToast visible={addedToastVisible} />
+
       {/* ---------------- Carrinho (drawer) ---------------- */}
       <CartDrawer
         open={cartOpen}
@@ -385,6 +413,49 @@ export default function GordaoHeadShopPage() {
 /* ------------------------------------------------------------------ */
 /* Subcomponentes                                                      */
 /* ------------------------------------------------------------------ */
+
+/**
+ * AddedToCartToast — aviso "Produto adicionado ao carrinho".
+ * ------------------------------------------------------------------
+ * Aparece no topo da tela toda vez que `addToCart` roda (app/page.tsx),
+ * fica 3s e some sozinho (o timer mora no componente pai, que também
+ * reinicia a contagem se outro produto for adicionado antes de sumir).
+ * Fundo branco com a mesma marca d'água de folha do resto do site — um
+ * padrão SVG próprio (não reaproveita LeafWatermark direto porque aquele
+ * componente cobre a tela inteira; aqui precisa caber dentro de um cartão
+ * pequeno).
+ */
+function AddedToCartToast({ visible }: { visible: boolean }) {
+  return (
+    <div
+      aria-live="polite"
+      className={`pointer-events-none fixed inset-x-0 top-5 z-[60] flex justify-center transition-all duration-300 ease-out ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-3 opacity-0"
+      }`}
+    >
+      <div className="relative flex items-center gap-2.5 overflow-hidden rounded-full border border-[#e3e6de] bg-white py-2.5 pl-3 pr-5 shadow-lg shadow-black/10">
+        <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full opacity-60">
+          <defs>
+            <pattern id="toastLeafWatermark" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
+              <path
+                d="M23,30 Q19,20 23,8 Q27,20 23,30 M23,19 Q14,19 8,15 M23,19 Q32,19 38,15 M23,23 Q15,25 10,30 M23,23 Q31,25 36,30"
+                fill="none"
+                stroke="#e7ede2"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#toastLeafWatermark)" />
+        </svg>
+        <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4caf6d] text-[#0a0d0a]">
+          <IconCheck className="h-3.5 w-3.5" />
+        </span>
+        <span className="relative text-sm font-medium text-[#1f2b23]">Produto adicionado ao carrinho</span>
+      </div>
+    </div>
+  );
+}
 
 /**
  * ProductCard — card de produto do catálogo.
