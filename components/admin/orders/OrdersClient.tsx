@@ -19,10 +19,11 @@
  */
 
 import { Fragment, useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, RefreshCw, Truck } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Printer, RefreshCw, Truck } from "lucide-react";
 import type { Order, OrderStatus, ShippingAddress } from "@/lib/admin/types";
 import StatusBadge from "@/components/admin/StatusBadge";
 import ShipOrderModal from "./ShipOrderModal";
+import ShippingLabel from "./ShippingLabel";
 
 const FILTERS: { value: OrderStatus | "todos"; label: string }[] = [
   { value: "todos", label: "Todos" },
@@ -100,6 +101,28 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [printingOrder, setPrintingOrder] = useState<Order | null>(null);
+
+  // Limpa a etiqueta assim que o diálogo de impressão fecha (imprimiu OU
+  // cancelou) — sem isso, a última etiqueta impressa ficaria "presa" no
+  // DOM (invisível na tela, mas pronta pra reaparecer se o admin apertar
+  // Ctrl+P/Cmd+P sem querer imprimir nenhum pedido específico).
+  useEffect(() => {
+    function handleAfterPrint() {
+      setPrintingOrder(null);
+    }
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, []);
+
+  function handlePrintLabel(order: Order) {
+    setPrintingOrder(order);
+    // Espera o React terminar de renderizar a etiqueta com os dados desse
+    // pedido antes de abrir o diálogo de impressão — chamar window.print()
+    // no mesmo tick arriscaria imprimir a etiqueta ainda com os dados
+    // antigos (ou vazia).
+    requestAnimationFrame(() => window.print());
+  }
 
   async function fetchOrders() {
     setRefreshing(true);
@@ -141,7 +164,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Pedidos</h1>
           <p className="text-sm text-slate-500">Acompanhe e despache os pedidos recebidos.</p>
@@ -156,7 +179,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 print:hidden">
         {FILTERS.map((item) => (
           <button
             key={item.value}
@@ -172,7 +195,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -264,8 +287,16 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                     ⚠️ Despacho Manual via App
                                   </span>
                                 )}
-                                <div>
+                                <div className="flex flex-wrap gap-2">
                                   <CopyAddressButton address={order.shippingAddress} />
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrintLabel(order)}
+                                    className="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                                  >
+                                    <Printer className="h-3.5 w-3.5" />
+                                    Imprimir etiqueta
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -300,6 +331,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       </div>
 
       <ShipOrderModal order={orderToShip} onClose={() => setOrderToShip(null)} onConfirm={handleConfirmShip} />
+      <ShippingLabel order={printingOrder} />
     </div>
   );
 }
