@@ -23,7 +23,7 @@ export default async function PedidoConfirmadoPage({
   searchParams: Promise<{ pedido?: string }>;
 }) {
   const { pedido } = await searchParams;
-  const order = pedido ? getOrderByExternalReference(pedido) : undefined;
+  const order = pedido ? await getOrderByExternalReference(pedido) : undefined;
   const alreadyConfirmed = order?.status === "pago";
 
   return (

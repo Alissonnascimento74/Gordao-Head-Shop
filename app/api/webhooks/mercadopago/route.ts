@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     // --- 3) Atualiza o pedido no orders-store (troque por UPDATE no seu
     //     banco de verdade quando plugar o ORM — ver lib/server/orders-store.ts) ---
-    const updated = updateOrderStatus(orderId, newStatus, {
+    const updated = await updateOrderStatus(orderId, newStatus, {
       mpPaymentId: payment.id ? String(payment.id) : undefined,
     });
 

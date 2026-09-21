@@ -26,5 +26,5 @@ export async function GET() {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
-  return NextResponse.json({ orders: listOrders() });
+  return NextResponse.json({ orders: await listOrders() });
 }

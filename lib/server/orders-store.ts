@@ -1,39 +1,41 @@
 /**
- * orders-store.ts — "banco de dados" TEMPORÁRIO dos pedidos.
+ * orders-store.ts — persistência dos pedidos.
  * ------------------------------------------------------------------
- * ⚠️ MOCK — leia isso antes de mexer em qualquer coisa aqui.
+ * Usa o Redis do Upstash (lib/server/redis.ts) como banco: cada pedido
+ * vira uma chave `gh:order:{id}` com o JSON do pedido, e um sorted set
+ * `gh:orders:index` guarda os ids ordenados por data de criação (score =
+ * timestamp) pra listOrders() devolver mais recente primeiro sem
+ * precisar ler tudo e ordenar na mão.
  *
- * Isso é um array em memória, dentro do processo do Node.js. Funciona
- * certinho enquanto você roda `npm run dev` na sua máquina (um processo
- * só, que fica de pé o tempo todo). Só que NA VERCEL EM PRODUÇÃO, cada
- * rota de API roda numa função serverless — o Node pode ser reiniciado
- * a qualquer momento, e duas requisições podem cair em instâncias
- * diferentes, cada uma com sua própria cópia desse array. Ou seja: em
- * produção, um pedido criado aqui pode "sumir" antes do webhook do
- * Mercado Pago confirmar o pagamento.
+ * Isso resolve o problema que existia com o array em memória: na Vercel,
+ * cada rota de API roda numa função serverless, e duas requisições podem
+ * cair em instâncias diferentes — um array local "esquecia" pedidos
+ * entre o checkout e o webhook do Mercado Pago. Com o Redis (um serviço
+ * externo, não memória do processo), toda instância enxerga os mesmos
+ * dados.
  *
- * Pra funcionar de verdade em produção, troque as 4 funções exportadas
- * abaixo por chamadas ao seu ORM (Prisma, Drizzle, etc.) apontando pra
- * um banco de verdade (Postgres, MySQL...). A ASSINATURA das funções
- * (o que elas recebem e devolvem) foi pensada pra continuar igual —
- * troque só o "miolo" de cada uma:
+ * SEM as variáveis do Upstash configuradas (`redis` é `null` — ver
+ * lib/server/redis.ts), cai de volta pro array em memória de antes. Isso
+ * só deve acontecer em desenvolvimento local sem as credenciais
+ * copiadas; em produção (Vercel com a integração conectada) o Redis
+ * sempre está disponível.
  *
- *   createOrder(input)                      -> INSERT
- *   updateOrderStatus(externalReference, …) -> UPDATE ... WHERE mp_preference_id = ...
- *   getOrderByExternalReference(ref)         -> SELECT ... WHERE mp_preference_id = ...
- *   listOrders()                             -> SELECT ... ORDER BY created_at DESC
- *
- * O resto do projeto (checkout, webhook, painel admin) só conhece essas
- * 4 funções — nunca acessa o array `orders` diretamente. Assim, quando
- * você plugar o banco real, só este arquivo muda.
+ * O resto do projeto (checkout, webhook, painel admin) só conhece as
+ * funções exportadas abaixo — nunca fala com o Redis diretamente. Se um
+ * dia trocar por um banco relacional (Postgres via Prisma/Drizzle), só
+ * este arquivo muda.
  */
 
+import { redis } from "@/lib/server/redis";
 import { MOCK_ORDERS } from "@/lib/admin/mock-data";
 import type { Order, OrderItem, OrderShippingMethod, OrderStatus, ShippingAddress } from "@/lib/admin/types";
 
-// Semeado com os pedidos de exemplo que já existiam, pra não "zerar" a
-// tela de Pedidos pra quem já está usando o painel mockado.
-const orders: Order[] = [...MOCK_ORDERS];
+const ORDER_KEY = (id: string) => `gh:order:${id}`;
+const INDEX_KEY = "gh:orders:index";
+const SEEDED_KEY = "gh:orders:seeded";
+
+// Fallback só usado quando o Redis não está configurado (ver acima).
+const memoryOrders: Order[] = [...MOCK_ORDERS];
 
 export type NewOrderInput = {
   customerName: string;
@@ -46,6 +48,31 @@ export type NewOrderInput = {
   total: number;
 };
 
+// Semeia o Redis com os pedidos de exemplo, uma única vez (pra não
+// "zerar" a tela de Pedidos de quem já estava usando o painel mockado).
+// `set(..., { nx: true })` garante que, se duas requisições chegarem ao
+// mesmo tempo no primeiro acesso, só uma delas semeia — as outras veem
+// a chave já criada e desistem.
+let seedPromise: Promise<void> | null = null;
+function seedIfNeeded(): Promise<void> {
+  if (!redis) return Promise.resolve();
+  if (!seedPromise) {
+    seedPromise = (async () => {
+      const acquired = await redis!.set(SEEDED_KEY, "1", { nx: true });
+      if (!acquired) return;
+      await Promise.all(
+        MOCK_ORDERS.map((order) =>
+          Promise.all([
+            redis!.set(ORDER_KEY(order.id), order),
+            redis!.zadd(INDEX_KEY, { score: new Date(order.createdAt).getTime(), member: order.id }),
+          ])
+        )
+      );
+    })();
+  }
+  return seedPromise;
+}
+
 /**
  * Cria um pedido novo com status "aguardando_pagamento" — chamada pela
  * rota de checkout (app/api/checkout/route.ts) assim que a Preference é
@@ -53,7 +80,7 @@ export type NewOrderInput = {
  * o `external_reference` mandado pro Mercado Pago, que é como o webhook
  * (mais tarde) vai saber qual pedido atualizar.
  */
-export function createOrder(input: NewOrderInput): Order {
+export async function createOrder(input: NewOrderInput): Promise<Order> {
   const order: Order = {
     id: `PED-${Date.now()}`,
     customerName: input.customerName,
@@ -67,7 +94,17 @@ export function createOrder(input: NewOrderInput): Order {
     status: "aguardando_pagamento",
     createdAt: new Date().toISOString(),
   };
-  orders.unshift(order); // mais novo primeiro, igual a tela de Pedidos já espera
+
+  if (redis) {
+    await seedIfNeeded();
+    await Promise.all([
+      redis.set(ORDER_KEY(order.id), order),
+      redis.zadd(INDEX_KEY, { score: Date.now(), member: order.id }),
+    ]);
+  } else {
+    memoryOrders.unshift(order); // mais novo primeiro, igual a tela de Pedidos já espera
+  }
+
   return order;
 }
 
@@ -75,8 +112,16 @@ export function createOrder(input: NewOrderInput): Order {
  * Grava o id da Preference do Mercado Pago no pedido, logo depois de
  * criá-la — é esse id que vira o `external_reference` da preference.
  */
-export function attachMercadoPagoPreference(orderId: string, preferenceId: string): void {
-  const order = orders.find((o) => o.id === orderId);
+export async function attachMercadoPagoPreference(orderId: string, preferenceId: string): Promise<void> {
+  if (redis) {
+    const order = await redis.get<Order>(ORDER_KEY(orderId));
+    if (!order) return;
+    order.mpPreferenceId = preferenceId;
+    await redis.set(ORDER_KEY(orderId), order);
+    return;
+  }
+
+  const order = memoryOrders.find((o) => o.id === orderId);
   if (order) order.mpPreferenceId = preferenceId;
 }
 
@@ -87,24 +132,44 @@ export function attachMercadoPagoPreference(orderId: string, preferenceId: strin
  * atualizar: toda Preference criada guarda `external_reference =
  * order.id`, e o Mercado Pago devolve esse mesmo valor no pagamento.
  */
-export function updateOrderStatus(
+export async function updateOrderStatus(
   externalReference: string,
   status: OrderStatus,
   extra?: { mpPaymentId?: string }
-): Order | null {
-  const order = orders.find((o) => o.id === externalReference);
-  if (!order) return null;
+): Promise<Order | null> {
+  if (redis) {
+    const order = await redis.get<Order>(ORDER_KEY(externalReference));
+    if (!order) return null;
+    order.status = status;
+    if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
+    await redis.set(ORDER_KEY(externalReference), order);
+    return order;
+  }
 
+  const order = memoryOrders.find((o) => o.id === externalReference);
+  if (!order) return null;
   order.status = status;
   if (extra?.mpPaymentId) order.mpPaymentId = extra.mpPaymentId;
   return order;
 }
 
-export function getOrderByExternalReference(externalReference: string): Order | undefined {
-  return orders.find((o) => o.id === externalReference);
+export async function getOrderByExternalReference(externalReference: string): Promise<Order | undefined> {
+  if (redis) {
+    await seedIfNeeded();
+    const order = await redis.get<Order>(ORDER_KEY(externalReference));
+    return order ?? undefined;
+  }
+  return memoryOrders.find((o) => o.id === externalReference);
 }
 
 /** Lista completa, mais recente primeiro — usada pelo painel Admin. */
-export function listOrders(): Order[] {
-  return [...orders];
+export async function listOrders(): Promise<Order[]> {
+  if (redis) {
+    await seedIfNeeded();
+    const ids = await redis.zrange<string[]>(INDEX_KEY, 0, -1, { rev: true });
+    if (ids.length === 0) return [];
+    const orders = await redis.mget<Order[]>(...ids.map(ORDER_KEY));
+    return orders.filter((o): o is Order => o !== null);
+  }
+  return [...memoryOrders];
 }

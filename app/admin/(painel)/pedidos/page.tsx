@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 // component roda de novo a cada request.
 export const dynamic = "force-dynamic";
 
-// Server Component: lê os pedidos direto do orders-store (mesmo processo
-// Node, sem precisar de fetch) pro primeiro carregamento da tela. Depois
-// disso, OrdersClient assume e busca atualizações via GET /api/orders.
-export default function PedidosPage() {
-  return <OrdersClient initialOrders={listOrders()} />;
+// Server Component: lê os pedidos direto do orders-store (Redis) pro
+// primeiro carregamento da tela. Depois disso, OrdersClient assume e
+// busca atualizações via GET /api/orders.
+export default async function PedidosPage() {
+  return <OrdersClient initialOrders={await listOrders()} />;
 }

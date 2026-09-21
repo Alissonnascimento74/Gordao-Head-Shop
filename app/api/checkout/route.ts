@@ -143,8 +143,8 @@ export async function POST(request: Request) {
   const itemsTotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const total = itemsTotal + shippingOption.price;
 
-  // --- Cria o pedido no nosso "banco" (mock — ver lib/server/orders-store.ts) ---
-  const order = createOrder({
+  // --- Cria o pedido no nosso "banco" (ver lib/server/orders-store.ts) ---
+  const order = await createOrder({
     customerName: body.customer.name.trim(),
     customerPhone: body.customer.phone.trim(),
     customerEmail: body.customer.email.trim(),
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       },
     });
 
-    if (preference.id) attachMercadoPagoPreference(order.id, preference.id);
+    if (preference.id) await attachMercadoPagoPreference(order.id, preference.id);
 
     return NextResponse.json({
       orderId: order.id,
