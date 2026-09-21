@@ -45,6 +45,16 @@ const FLAT_SHIPPING_FEE = 0; // "frete grátis" por enquanto
 
 const SITE_URL = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://SEU-SITE.vercel.app";
 
+// O Mercado Pago exige que `back_urls.success` seja uma URL pública de
+// verdade quando `auto_return` está ligado — com `localhost` ele recusa a
+// Preference inteira (`auto_return invalid. back_url.success must be
+// defined`). Em dev local isso não tem jeito (localhost nunca é público),
+// então só ligamos `auto_return` quando o SITE_URL não for localhost. Sem
+// isso, o cliente só não volta sozinho pro site depois de pagar — ainda dá
+// pra testar o resto do fluxo (o Mercado Pago sempre mostra um botão
+// "Voltar ao site" manual).
+const IS_PUBLIC_SITE_URL = !/^https?:\/\/localhost/.test(SITE_URL);
+
 export async function POST(request: Request) {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!accessToken) {
@@ -144,7 +154,7 @@ export async function POST(request: Request) {
           failure: `${SITE_URL}/checkout`,
           pending: `${SITE_URL}/checkout`,
         },
-        auto_return: "approved",
+        ...(IS_PUBLIC_SITE_URL ? { auto_return: "approved" as const } : {}),
         statement_descriptor: "GORDAO HEADSHOP",
       },
     });
