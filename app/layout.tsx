@@ -9,10 +9,12 @@ const SITE_URL = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "ht
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Gordão HeadShop — Tabacaria e Headshop",
-    template: "%s | Gordão HeadShop",
-  },
+  // Sem `template`: toda página do site (Admin incluso) já escreve o
+  // próprio título por extenso (ex.: "Pedidos — Painel Gordão HeadShop"),
+  // então um template tipo "%s | Gordão HeadShop" só duplicaria o nome da
+  // loja no final de cada aba. `default` cobre só a home, que não define
+  // título próprio.
+  title: "Gordão HeadShop — Tabacaria e Headshop",
   description:
     "Tabaco, sedas e piteiras, e acessórios. Tudo pra sua sessão ficar o mais leve possível.",
   keywords: [
