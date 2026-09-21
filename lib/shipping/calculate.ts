@@ -16,6 +16,12 @@
  *   1) Geocoding do CEP de destino (CEP -> latitude/longitude)
  *   2) Distância entre a loja e o destino (fórmula de Haversine)
  *   3) Cotação de cada transportadora a partir dessa distância
+ *
+ * ⚠️ Decisão do dono do negócio: o 99 Entrega NÃO vai ganhar integração
+ * de API — a operação é manual (o motoboy é chamado pelo app comum do
+ * 99, depois de ver o pedido no Admin). Por isso o preço dele é um valor
+ * FIXO combinado (`LOCAL_EXPRESS_FLAT_PRICE`, ver mais abaixo), não uma
+ * cotação por distância como PAC/Sedex.
  */
 
 import type { ShippingOption, ShippingQuoteResult } from "./types";
@@ -184,27 +190,31 @@ function quoteCorreios(distanceKm: number): ShippingOption[] {
 }
 
 /**
+ * Preço fixo do 99 Entrega pra qualquer CEP da região metropolitana da
+ * loja — decisão do dono do negócio: a operação é 100% MANUAL (o dono
+ * mesmo chama o motoboy pelo app convencional do 99, depois de ver o
+ * pedido no Admin — ver "Botão Copiar Endereço" na tela de Pedidos), sem
+ * nenhuma integração com API da 99. Não existe cobrança variável por
+ * distância porque não existe cotação automática nenhuma — é só uma
+ * regra de preço combinada. Se um dia isso mudar, é só editar esse
+ * número (ou trazer de volta um cálculo por distância).
+ */
+const LOCAL_EXPRESS_FLAT_PRICE = 15;
+
+/**
  * 99 Entrega (motoboy) — só quando o destino está na mesma região
  * metropolitana da loja E dentro de um raio prático de motoboy.
- *
- * MOCK: diferente do Mercado Pago, o 99 Entrega não tem um SDK/API
- * pública de auto-atendimento documentada do mesmo jeito — pra integrar
- * de verdade, o caminho é virar parceiro comercial (99Food/99Entregas
- * for Business) e pedir credenciais/documentação de API diretamente com
- * eles. Aqui simulamos a resposta que uma chamada dessas devolveria:
- * preço a partir da distância, e ETA mais curto quanto mais perto.
  */
 function quote99Entrega(distanceKm: number): ShippingOption | null {
   if (distanceKm > EXPRESS_MAX_DISTANCE_KM) return null;
 
-  const price = round2(9.9 + distanceKm * 1.35);
   const estimatedDelivery = distanceKm <= 10 ? "Hoje, em até 2h" : "Hoje, em até 4h";
 
   return {
     id: "99-entrega",
     carrier: "99 Entrega",
     label: "99 Entrega — Motoboy",
-    price,
+    price: LOCAL_EXPRESS_FLAT_PRICE,
     estimatedDelivery,
     isExpress: true,
   };

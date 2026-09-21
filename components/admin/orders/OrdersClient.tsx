@@ -19,8 +19,8 @@
  */
 
 import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, RefreshCw, Truck } from "lucide-react";
-import type { Order, OrderStatus } from "@/lib/admin/types";
+import { Check, ChevronDown, ChevronUp, Copy, RefreshCw, Truck } from "lucide-react";
+import type { Order, OrderStatus, ShippingAddress } from "@/lib/admin/types";
 import StatusBadge from "@/components/admin/StatusBadge";
 import ShipOrderModal from "./ShipOrderModal";
 
@@ -47,6 +47,50 @@ function formatCPF(cpf: string) {
   const digits = cpf.replace(/\D/g, "");
   if (digits.length !== 11) return cpf;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+/** Endereço inteiro numa linha só — o que o botão "Copiar Endereço" cola
+ *  no clipboard, pronto pra colar direto no app do 99 ou no WhatsApp do motoboy. */
+function formatAddressLine(address: ShippingAddress) {
+  return `${address.street}, ${address.number}, ${address.neighborhood}, ${address.city} - ${address.state}, CEP ${address.cep}`;
+}
+
+/**
+ * CopyAddressButton — botão "Copiar Endereço" com feedback de "Copiado!".
+ * ------------------------------------------------------------------
+ * Componente próprio (em vez de um estado só no OrdersClient) porque cada
+ * PEDIDO precisa do seu próprio timer de "Copiado!" — com um estado
+ * compartilhado, copiar o endereço de um pedido acenderia o feedback em
+ * todos os botões da tela ao mesmo tempo.
+ */
+function CopyAddressButton({ address }: { address: ShippingAddress }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(formatAddressLine(address));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard indisponível (ex.: contexto não seguro, permissão
+      // negada) — sem feedback de erro, só não acende o "Copiado!".
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={`mt-2 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+        copied
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-slate-200 text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? "Copiado!" : "Copiar endereço"}
+    </button>
+  );
 }
 
 export default function OrdersClient({ initialOrders }: { initialOrders: Order[] }) {
@@ -215,6 +259,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                     {formatCurrency(order.shippingMethod.price)}
                                   </p>
                                 )}
+                                {order.shippingMethod?.isExpress && (
+                                  <span className="mt-1.5 inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                    ⚠️ Despacho Manual via App
+                                  </span>
+                                )}
+                                <div>
+                                  <CopyAddressButton address={order.shippingAddress} />
+                                </div>
                               </div>
                             )}
                             <div>
