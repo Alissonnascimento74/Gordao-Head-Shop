@@ -69,9 +69,17 @@ export default function CheckoutPage() {
   );
 }
 
+// `<style jsx global>` (não uma tag `<style>` comum) — achado testando o
+// frete: uma tag `<style>` comum com aspas dentro do texto (o `@import
+// url("...")`) faz o React escapar as aspas em `&quot;` na renderização
+// do servidor, mas o navegador não decodifica entidades HTML dentro de
+// `<style>` (é um elemento de "texto cru" pela spec) — dá erro de
+// hidratação ("Text content does not match") porque o servidor manda
+// `&quot;` literal e o cliente espera aspas de verdade. `style jsx`
+// (styled-jsx, já embutido no Next.js) processa isso do jeito certo.
 function GlobalStyles() {
   return (
-    <style>{`
+    <style jsx global>{`
       @import url("https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap");
       .font-display {
         font-family: "Anton", "Inter", sans-serif;

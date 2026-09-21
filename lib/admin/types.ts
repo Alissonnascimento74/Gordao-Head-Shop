@@ -35,6 +35,16 @@ export type ShippingAddress = {
   state: string;
 };
 
+/** Frete escolhido no checkout — resumo do que app/api/checkout/route.ts
+ *  recalculou e validou (ver lib/shipping/calculate.ts). Guardado no
+ *  pedido pra quem for despachar saber se é Correios ou motoboy. */
+export type OrderShippingMethod = {
+  carrier: string;
+  label: string;
+  price: number;
+  isExpress: boolean;
+};
+
 export type Order = {
   id: string;
   customerName: string;
@@ -44,6 +54,7 @@ export type Order = {
   customerEmail?: string;
   customerCPF?: string;
   shippingAddress?: ShippingAddress;
+  shippingMethod?: OrderShippingMethod;
   items: OrderItem[];
   total: number;
   status: OrderStatus;

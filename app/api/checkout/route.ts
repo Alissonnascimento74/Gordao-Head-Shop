@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { PRODUCTS } from "@/app/products";
 import { createOrder, attachMercadoPagoPreference } from "@/lib/server/orders-store";
+import { calculateShippingOptions } from "@/lib/shipping/calculate";
 import { isValidCPF } from "@/utils/validators";
 import type { OrderItem, ShippingAddress } from "@/lib/admin/types";
 
@@ -37,11 +38,9 @@ type CheckoutRequestBody = {
     phone: string;
   };
   shippingAddress: ShippingAddress;
+  /** Id da opção escolhida em ShippingCalculator.tsx (ex.: "pac", "99-entrega") — nunca o preço. */
+  shippingOptionId: string;
 };
-
-// Frete fixo de exemplo — troque por uma cotação real (Correios, Melhor
-// Envio etc.) quando for integrar cálculo de frete de verdade.
-const FLAT_SHIPPING_FEE = 0; // "frete grátis" por enquanto
 
 const SITE_URL = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://SEU-SITE.vercel.app";
 
@@ -82,6 +81,22 @@ export async function POST(request: Request) {
   if (!address?.cep || !address?.street || !address?.number || !address?.city || !address?.state) {
     return NextResponse.json({ error: "Preencha o endereço de entrega completo." }, { status: 400 });
   }
+  if (!body.shippingOptionId) {
+    return NextResponse.json({ error: "Selecione uma opção de frete." }, { status: 400 });
+  }
+
+  // --- Recalcula o frete a partir do CEP, no servidor — nunca confia no
+  //     preço de frete vindo do navegador (mesma lógica de segurança do
+  //     preço dos produtos, logo abaixo). O front só manda QUAL opção
+  //     foi escolhida (ex.: "99-entrega"); o preço vem sempre daqui. ---
+  const { options: shippingOptions } = await calculateShippingOptions(address.cep);
+  const shippingOption = shippingOptions.find((opt) => opt.id === body.shippingOptionId);
+  if (!shippingOption) {
+    // Cobre tanto id inventado quanto o caso de o 99 Entrega ter sido
+    // escolhido pro CEP errado (ex.: fora da região metropolitana) —
+    // nesse caso ele nem aparece na lista recalculada, então some aqui.
+    return NextResponse.json({ error: "Opção de frete inválida para esse CEP." }, { status: 400 });
+  }
 
   // --- Recalcula os preços a partir do catálogo real (nunca confia no
   //     preço vindo do navegador) -------------------------------------
@@ -112,8 +127,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nenhum item válido no carrinho." }, { status: 400 });
   }
 
+  // Frete entra como um item a mais na Preference — sem isso, o valor
+  // cobrado pelo Mercado Pago ficaria menor que o total mostrado no
+  // pedido (a soma dos `items` é o que define quanto o MP cobra).
+  if (shippingOption.price > 0) {
+    mpItems.push({
+      id: `frete-${shippingOption.id}`,
+      title: `Frete — ${shippingOption.label}`,
+      quantity: 1,
+      unit_price: shippingOption.price,
+      currency_id: "BRL",
+    });
+  }
+
   const itemsTotal = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const total = itemsTotal + FLAT_SHIPPING_FEE;
+  const total = itemsTotal + shippingOption.price;
 
   // --- Cria o pedido no nosso "banco" (mock — ver lib/server/orders-store.ts) ---
   const order = createOrder({
@@ -122,6 +150,12 @@ export async function POST(request: Request) {
     customerEmail: body.customer.email.trim(),
     customerCPF: body.customer.cpf.replace(/\D/g, ""),
     shippingAddress: address,
+    shippingMethod: {
+      carrier: shippingOption.carrier,
+      label: shippingOption.label,
+      price: shippingOption.price,
+      isExpress: shippingOption.isExpress,
+    },
     items: orderItems,
     total,
   });

@@ -29,7 +29,7 @@
  */
 
 import { MOCK_ORDERS } from "@/lib/admin/mock-data";
-import type { Order, OrderItem, OrderStatus, ShippingAddress } from "@/lib/admin/types";
+import type { Order, OrderItem, OrderShippingMethod, OrderStatus, ShippingAddress } from "@/lib/admin/types";
 
 // Semeado com os pedidos de exemplo que já existiam, pra não "zerar" a
 // tela de Pedidos pra quem já está usando o painel mockado.
@@ -41,6 +41,7 @@ export type NewOrderInput = {
   customerEmail: string;
   customerCPF: string;
   shippingAddress: ShippingAddress;
+  shippingMethod?: OrderShippingMethod;
   items: OrderItem[];
   total: number;
 };
@@ -60,6 +61,7 @@ export function createOrder(input: NewOrderInput): Order {
     customerEmail: input.customerEmail,
     customerCPF: input.customerCPF,
     shippingAddress: input.shippingAddress,
+    shippingMethod: input.shippingMethod,
     items: input.items,
     total: input.total,
     status: "aguardando_pagamento",

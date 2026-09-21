@@ -208,6 +208,13 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                   {order.shippingAddress.state}
                                 </p>
                                 <p className="text-slate-700">CEP: {order.shippingAddress.cep}</p>
+                                {order.shippingMethod && (
+                                  <p className="mt-1 font-medium text-slate-700">
+                                    {order.shippingMethod.isExpress ? "🏍️ " : "📦 "}
+                                    {order.shippingMethod.label} —{" "}
+                                    {formatCurrency(order.shippingMethod.price)}
+                                  </p>
+                                )}
                               </div>
                             )}
                             <div>

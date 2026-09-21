@@ -21,9 +21,11 @@
 
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, Package } from "lucide-react";
 import { formatCEP, formatCPF, formatPhone, isValidCPF } from "@/utils/validators";
 import type { ShippingAddress } from "@/lib/admin/types";
+import type { ShippingOption } from "@/lib/shipping/types";
+import ShippingCalculator from "./ShippingCalculator";
 
 export type CheckoutCartItem = {
   id: string;
@@ -37,8 +39,6 @@ const BRAZIL_STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
-
-const FLAT_SHIPPING_FEE = 0; // mantém em sincronia com app/api/checkout/route.ts (mock de frete grátis)
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -58,11 +58,12 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
     state: "",
   });
   const [cepLoading, setCepLoading] = useState(false);
+  const [shipping, setShipping] = useState<ShippingOption | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal + FLAT_SHIPPING_FEE;
+  const total = subtotal + (shipping?.price ?? 0);
 
   async function handleCepBlur() {
     const digits = address.cep.replace(/\D/g, "");
@@ -101,6 +102,10 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
       setError("CPF inválido. Confira os números digitados.");
       return;
     }
+    if (!shipping) {
+      setError("Selecione uma opção de frete.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -111,6 +116,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
           items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
           customer: { name, email, cpf, phone },
           shippingAddress: address,
+          shippingOptionId: shipping.id,
         }),
       });
 
@@ -263,6 +269,14 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             </div>
           </div>
         </div>
+
+        <div className="rounded-2xl border border-[#e3e6de] bg-white p-6">
+          <h2 className="mb-4 flex items-center gap-2 font-display text-lg text-[#1f2b23]">
+            <Package className="h-4 w-4 text-[#4caf6d]" />
+            Frete
+          </h2>
+          <ShippingCalculator cep={address.cep} selected={shipping} onSelect={setShipping} />
+        </div>
       </div>
 
       {/* ---------------- Resumo do pedido ---------------- */}
@@ -293,8 +307,10 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
               <span>{formatBRL(subtotal)}</span>
             </div>
             <div className="flex justify-between text-[#5f7767]">
-              <span>Frete</span>
-              <span>{FLAT_SHIPPING_FEE === 0 ? "Grátis" : formatBRL(FLAT_SHIPPING_FEE)}</span>
+              <span>Frete{shipping ? ` (${shipping.label})` : ""}</span>
+              <span>
+                {shipping ? (shipping.price === 0 ? "Grátis" : formatBRL(shipping.price)) : "—"}
+              </span>
             </div>
           </div>
 
@@ -307,7 +323,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
 
           <button
             type="submit"
-            disabled={submitting || items.length === 0}
+            disabled={submitting || items.length === 0 || !shipping}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#4caf6d] py-3.5 text-sm font-semibold text-[#0a0d0a] transition hover:bg-[#5fc47f] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
