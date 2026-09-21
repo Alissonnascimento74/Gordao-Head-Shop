@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * LoginForm — tela de login do Painel Admin.
+ * ------------------------------------------------------------------
+ * `handleSubmit` manda usuário/senha pra app/api/admin/login/route.ts
+ * (que confere contra lib/admin/auth-config.ts e grava o cookie de
+ * sessão) e, se der certo, redireciona pro dashboard. O `router.refresh()`
+ * depois do `router.push()` é necessário porque as páginas do Admin são
+ * Server Components — sem isso, o servidor não re-executaria a checagem
+ * de sessão e a navegação pareceria "travada" na tela de login.
+ */
+
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
