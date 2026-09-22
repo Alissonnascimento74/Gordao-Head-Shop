@@ -1,6 +1,12 @@
-// A categoria de um produto não é mais um campo fixo aqui — ela é
-// calculada a partir do nome usando utils/categoryParser.ts (a mesma
-// lógica usada na Vitrine). Ver components/admin/products/ProductsClient.tsx.
+import type { CategoryId } from "@/utils/categoryParser";
+
+// A categoria de um produto normalmente é CALCULADA a partir do nome
+// usando utils/categoryParser.ts (a mesma lógica usada na Vitrine) — não
+// existe um campo fixo pra maioria do catálogo. `categoryOverride` é a
+// exceção: quando o lojista cadastra um produto novo (ou edita um
+// existente) e escolhe a seção manualmente em vez de aceitar a detectada
+// automaticamente, essa escolha fica guardada aqui e passa a valer no
+// lugar da detecção por nome. Ver components/admin/products/ProductsClient.tsx.
 export type AdminProduct = {
   id: string;
   name: string;
@@ -17,6 +23,9 @@ export type AdminProduct = {
    *  Diferente do resto deste tipo, é o único campo que persiste de verdade
    *  (Redis, ver lib/server/product-costs.ts) — os outros ainda são mock. */
   costPrice?: number;
+  /** Seção escolhida manualmente no formulário — ausente = usa a categoria
+   *  detectada automaticamente pelo nome (parseProductCategory). */
+  categoryOverride?: CategoryId;
 };
 
 // "cancelado" cobre pagamento recusado/cancelado no Mercado Pago — sem

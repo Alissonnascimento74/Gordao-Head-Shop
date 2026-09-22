@@ -5,11 +5,12 @@
  * ------------------------------------------------------------------
  * "Client" porque precisa de estado (useState) pra estoque, disponibilidade,
  * edições e filtro de categoria mudarem na tela sem precisar recarregar a
- * página. A categoria de cada produto não vem mais salva no objeto — ela é
- * calculada na hora, lendo o nome do produto com `parseProductCategory`
- * (utils/categoryParser.ts). É a mesma função usada na Vitrine
- * (app/vitrine/page.tsx), então um produto sempre cai na mesma categoria
- * nas duas telas.
+ * página. A categoria de um produto é `categoryOverride` quando a pessoa
+ * escolheu à mão no formulário (ProductFormModal.tsx) — senão, é
+ * CALCULADA na hora a partir do nome com `parseProductCategory`
+ * (utils/categoryParser.ts, a mesma função usada na Vitrine). A função
+ * `resolveCategory` abaixo centraliza essa regra pra tabela, os filtros e
+ * as abas nunca divergirem entre si.
  *
  * `initialProducts` vem do catálogo real (482 produtos, ver
  * lib/admin/mock-data.ts) — editar aqui só muda o estado desta página
@@ -22,7 +23,7 @@ import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Leaf, Minus, Pencil, Plus, PlusCircle, Search } from "lucide-react";
 import type { AdminProduct } from "@/lib/admin/types";
-import { getAvailableCategories, getCategoryLabel, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
+import { ALL_CATEGORIES, getCategoryLabel, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 import CategoryTabs from "@/components/CategoryTabs";
 import ProductFormModal from "./ProductFormModal";
 
@@ -30,6 +31,11 @@ import ProductFormModal from "./ProductFormModal";
 // tela, que significa "não filtrar por categoria nenhuma".
 const TODOS = "todos" as const;
 type CategoryFilter = CategoryId | typeof TODOS;
+
+/** Seção "oficial" de um produto: a escolhida à mão, ou a detectada pelo nome. */
+function resolveCategory(product: AdminProduct): CategoryId {
+  return product.categoryOverride ?? parseProductCategory(product.name);
+}
 
 function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -206,17 +212,19 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
 
   // Recalcula as abas disponíveis (e a lista filtrada) só quando `products`,
   // `activeCategory` ou `search` mudam — evita refazer esse trabalho em
-  // toda renderização.
+  // toda renderização. Usa `resolveCategory` (não só o nome) pra respeitar
+  // seções escolhidas à mão — um produto com categoryOverride não pode
+  // "sumir" de uma aba só porque o nome dele bateria com outra palavra-chave.
   const categoryTabs = useMemo(() => {
-    const available = getAvailableCategories(products.map((p) => p.name));
+    const presentIds = new Set(products.map((product) => resolveCategory(product)));
+    const available = ALL_CATEGORIES.filter((category) => presentIds.has(category.id));
     return [{ id: TODOS, label: "Todos" }, ...available];
   }, [products]);
 
   const visibleProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     return products.filter((product) => {
-      const matchesCategory =
-        activeCategory === TODOS || parseProductCategory(product.name) === activeCategory;
+      const matchesCategory = activeCategory === TODOS || resolveCategory(product) === activeCategory;
       const matchesSearch =
         !query || product.name.toLowerCase().includes(query) || product.id.toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
@@ -286,7 +294,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-slate-600">{getCategoryLabel(parseProductCategory(product.name))}</td>
+                  <td className="px-5 py-3 text-slate-600">{getCategoryLabel(resolveCategory(product))}</td>
                   <td className="px-5 py-3 font-medium text-slate-700">{formatCurrency(product.price)}</td>
                   <td className="px-5 py-3">
                     <CostPriceCell

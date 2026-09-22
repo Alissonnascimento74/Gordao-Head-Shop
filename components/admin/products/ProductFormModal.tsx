@@ -10,11 +10,14 @@
  * (ProductsClient.handleSaveProduct) sabe que é pra substituir em vez de
  * adicionar um item novo na lista.
  *
- * A categoria não é escolhida à mão num <select> — ela é detectada
- * automaticamente enquanto a pessoa digita o nome, chamando
- * `parseProductCategory` (a mesma inteligência usada na Vitrine e na
- * tabela de Produtos). Isso evita cadastrar um produto com a categoria
- * errada e mostra a "inteligência" funcionando em tempo real.
+ * Seção/categoria: sugerida automaticamente enquanto a pessoa digita o
+ * nome, chamando `parseProductCategory` (a mesma inteligência usada na
+ * Vitrine e na tabela de Produtos) — mas também dá pra escolher à mão
+ * num <select>, pra quando a detecção erra ou o produto não se encaixa
+ * bem em nenhuma palavra-chave. Assim que a pessoa mexe no <select> uma
+ * vez, a sugestão automática para de sobrescrever a escolha dela (ver
+ * `categoryTouched` abaixo) — só volta a sugerir se o nome mudar de novo
+ * ainda sem seleção manual.
  *
  * Upload de imagem: como ainda não existe backend/storage de verdade,
  * a foto escolhida é lida no navegador (FileReader) e vira uma "data
@@ -37,7 +40,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Modal from "@/components/admin/ui/Modal";
 import type { AdminProduct } from "@/lib/admin/types";
-import { getCategoryLabel, parseProductCategory } from "@/utils/categoryParser";
+import { ALL_CATEGORIES, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 import { bakeImageToDataUrl } from "@/utils/imageResize";
 import ProductImagePicker from "./ProductImagePicker";
 
@@ -55,6 +58,10 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
   const [name, setName] = useState(BLANK_FORM.name);
   const [price, setPrice] = useState(BLANK_FORM.price);
   const [stock, setStock] = useState(BLANK_FORM.stock);
+  const [category, setCategory] = useState<CategoryId>("diversos");
+  // true assim que a pessoa mexe no <select> à mão — a partir daí, digitar
+  // no nome não sobrescreve mais a escolha dela (ver useEffect de `name` abaixo).
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [imageScale, setImageScale] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -72,18 +79,29 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       setPrice(String(editingProduct.price));
       setStock(String(editingProduct.stock));
       setRawImage(editingProduct.imageUrl ?? null);
+      // Produto editado já tem uma seção "oficial" (escolhida antes ou
+      // detectada) — trata como já definida, não deixa o nome sobrescrever.
+      setCategory(editingProduct.categoryOverride ?? parseProductCategory(editingProduct.name));
+      setCategoryTouched(true);
     } else {
       setName(BLANK_FORM.name);
       setPrice(BLANK_FORM.price);
       setStock(BLANK_FORM.stock);
       setRawImage(null);
+      setCategory("diversos");
+      setCategoryTouched(false);
     }
     setImageScale(1);
   }, [open, editingProduct]);
 
-  // Recalculada a cada tecla digitada — é barata (só compara texto) e é
-  // exatamente isso que demonstra a categorização automática funcionando.
-  const detectedCategory = name.trim() ? getCategoryLabel(parseProductCategory(name)) : null;
+  // Sugere a categoria enquanto a pessoa digita o nome — só até ela mexer
+  // no <select> uma vez (categoryTouched). Depois disso, a escolha manual
+  // manda, mesmo que o nome mude.
+  useEffect(() => {
+    if (categoryTouched) return;
+    if (!name.trim()) return;
+    setCategory(parseProductCategory(name));
+  }, [name, categoryTouched]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -100,6 +118,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       soldOut: Number(stock) <= 0,
       featured: editingProduct?.featured,
       promoLabel: editingProduct?.promoLabel,
+      categoryOverride: category,
     });
     setSaving(false);
     onClose();
@@ -118,11 +137,29 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
             placeholder="Ex.: Bag Vault pequena"
           />
-          {detectedCategory && (
-            <p className="mt-1 text-xs text-slate-500">
-              Categoria detectada automaticamente: <span className="font-medium text-brand-forest">{detectedCategory}</span>
-            </p>
-          )}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Seção</label>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value as CategoryId);
+              setCategoryTouched(true);
+            }}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-green"
+          >
+            {ALL_CATEGORIES.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {categoryTouched
+              ? "Escolhida à mão — digitar o nome não muda mais essa seção."
+              : "Sugerida automaticamente a partir do nome — pode trocar se estiver errada."}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
