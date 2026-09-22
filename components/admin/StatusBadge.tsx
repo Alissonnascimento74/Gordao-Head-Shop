@@ -23,11 +23,19 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
   },
 };
 
-export default function StatusBadge({ status }: { status: OrderStatus }) {
+export default function StatusBadge({
+  status,
+  isPickup,
+}: {
+  status: OrderStatus;
+  /** true = pedido de retirada na loja — "despachado" vira "Retirado" (não existe despacho pra quem busca pessoalmente). */
+  isPickup?: boolean;
+}) {
   const config = STATUS_CONFIG[status];
+  const label = status === "despachado" && isPickup ? "Retirado" : config.label;
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
-      {config.label}
+      {label}
     </span>
   );
 }

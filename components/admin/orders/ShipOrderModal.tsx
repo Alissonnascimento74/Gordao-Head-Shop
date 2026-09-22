@@ -1,8 +1,14 @@
 "use client";
 
-// Modal que pede o código de rastreio e devolve (orderId, trackingCode)
-// pro componente pai — quem realmente marca o pedido como despachado é
-// OrdersClient.tsx (handleConfirmShip), este modal só cuida do formulário.
+// Modal que confirma a conclusão de um pedido e devolve (orderId,
+// trackingCode) pro componente pai — quem realmente marca o pedido como
+// despachado/retirado é OrdersClient.tsx (handleConfirmShip), este modal
+// só cuida do formulário.
+//
+// Pedidos de "Retirar na loja" não têm código de rastreio (não existe
+// Correios/motoboy quando o cliente busca pessoalmente) — pra esses, o
+// campo nem aparece, e o texto do modal muda pra falar de retirada em
+// vez de despacho.
 import { useState, type FormEvent } from "react";
 import Modal from "@/components/admin/ui/Modal";
 import type { Order } from "@/lib/admin/types";
@@ -15,6 +21,7 @@ type ShipOrderModalProps = {
 
 export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderModalProps) {
   const [trackingCode, setTrackingCode] = useState("");
+  const isPickup = order?.shippingMethod?.carrier === "Retirada";
 
   function handleClose() {
     setTrackingCode("");
@@ -29,23 +36,30 @@ export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderM
   }
 
   return (
-    <Modal open={!!order} onClose={handleClose} title="Marcar como despachado">
+    <Modal open={!!order} onClose={handleClose} title={isPickup ? "Marcar como retirado" : "Marcar como despachado"}>
       {order && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-sm text-slate-600">
             Pedido <span className="font-medium text-slate-800">{order.id}</span> — {order.customerName}
           </p>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Código de rastreio</label>
-            <input
-              required
-              value={trackingCode}
-              onChange={(e) => setTrackingCode(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
-              placeholder="Ex.: BR123456789BR"
-            />
-          </div>
+          {isPickup ? (
+            <p className="text-sm text-slate-600">
+              Confirma que o cliente já retirou esse pedido na loja? Sem código de rastreio — não há
+              envio nesse caso.
+            </p>
+          ) : (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Código de rastreio</label>
+              <input
+                required
+                value={trackingCode}
+                onChange={(e) => setTrackingCode(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-green"
+                placeholder="Ex.: BR123456789BR"
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -59,7 +73,7 @@ export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderM
               type="submit"
               className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-brand-darker hover:bg-brand-greenLight"
             >
-              Confirmar despacho
+              {isPickup ? "Confirmar retirada" : "Confirmar despacho"}
             </button>
           </div>
         </form>

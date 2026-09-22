@@ -223,6 +223,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
             <tbody className="divide-y divide-slate-100">
               {visibleOrders.map((order) => {
                 const canShip = order.status === "pago" || order.status === "separando";
+                const isPickup = order.shippingMethod?.carrier === "Retirada";
                 const expanded = expandedOrderId === order.id;
                 const hasDetails = Boolean(
                   order.customerEmail || order.customerCPF || order.shippingAddress || order.shippingMethod
@@ -238,7 +239,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                       <td className="px-5 py-3 text-slate-500">{formatDate(order.createdAt)}</td>
                       <td className="px-5 py-3 font-medium text-slate-700">{formatCurrency(order.total)}</td>
                       <td className="px-5 py-3">
-                        <StatusBadge status={order.status} />
+                        <StatusBadge status={order.status} isPickup={isPickup} />
                         {order.trackingCode && (
                           <p className="mt-1 text-xs text-slate-400">Rastreio: {order.trackingCode}</p>
                         )}
@@ -250,7 +251,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                             className="flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-brand-darker hover:bg-brand-greenLight"
                           >
                             <Truck className="h-3.5 w-3.5" />
-                            Marcar como despachado
+                            {isPickup ? "Marcar como retirado" : "Marcar como despachado"}
                           </button>
                         ) : (
                           <span className="text-xs text-slate-300">—</span>
