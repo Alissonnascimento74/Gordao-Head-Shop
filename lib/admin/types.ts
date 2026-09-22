@@ -13,6 +13,10 @@ export type AdminProduct = {
   featured?: boolean;
   /** Selo de promoção mostrado sobre o produto, ex.: "10% OFF". Ausente = sem promoção. */
   promoLabel?: string;
+  /** Valor de entrada (custo pago pela loja) — ausente = ainda não cadastrado.
+   *  Diferente do resto deste tipo, é o único campo que persiste de verdade
+   *  (Redis, ver lib/server/product-costs.ts) — os outros ainda são mock. */
+  costPrice?: number;
 };
 
 // "cancelado" cobre pagamento recusado/cancelado no Mercado Pago — sem
