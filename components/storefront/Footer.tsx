@@ -31,7 +31,7 @@ export default function Footer() {
             <span className="block font-display text-sm tracking-wide text-[#5f7767]">
               GORDÃO HEADSHOP © {new Date().getFullYear()}
             </span>
-            <span className="block text-xs text-[#8ea395]">Rua Joaquim Felício, 153 — Parque Alvorada</span>
+            <span className="block text-xs text-[#8ea395]">Rua Joaquim Felício, 118 — Parque Alvorada</span>
           </div>
         </button>
 
