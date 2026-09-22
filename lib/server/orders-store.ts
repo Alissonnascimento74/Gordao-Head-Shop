@@ -42,7 +42,8 @@ export type NewOrderInput = {
   customerPhone: string;
   customerEmail: string;
   customerCPF: string;
-  shippingAddress: ShippingAddress;
+  /** Ausente quando o pedido é retirada na loja — não tem endereço de entrega. */
+  shippingAddress?: ShippingAddress;
   shippingMethod?: OrderShippingMethod;
   items: OrderItem[];
   total: number;

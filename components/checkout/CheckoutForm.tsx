@@ -24,7 +24,7 @@ import Image from "next/image";
 import { Loader2, MapPin, Package } from "lucide-react";
 import { formatCEP, formatCPF, formatPhone, isValidCPF } from "@/utils/validators";
 import type { ShippingAddress } from "@/lib/admin/types";
-import type { ShippingOption } from "@/lib/shipping/types";
+import { PICKUP_OPTION, STORE_PICKUP_ADDRESS, type ShippingOption } from "@/lib/shipping/types";
 import ShippingCalculator from "./ShippingCalculator";
 
 export type CheckoutCartItem = {
@@ -64,6 +64,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + (shipping?.price ?? 0);
+  const isPickup = shipping?.id === PICKUP_OPTION.id;
 
   async function handleCepBlur() {
     const digits = address.cep.replace(/\D/g, "");
@@ -106,6 +107,10 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
       setError("Selecione uma opção de frete.");
       return;
     }
+    if (!isPickup && (!address.cep || !address.street || !address.number || !address.city || !address.state)) {
+      setError("Preencha o endereço de entrega completo.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -115,7 +120,10 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
         body: JSON.stringify({
           items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
           customer: { name, email, cpf, phone },
-          shippingAddress: address,
+          // Retirar na loja não precisa de endereço nenhum — o servidor
+          // (app/api/checkout/route.ts) reconhece PICKUP_OPTION.id e não
+          // exige/usa esse campo nesse caso.
+          shippingAddress: isPickup ? undefined : address,
           shippingOptionId: shipping.id,
         }),
       });
@@ -192,12 +200,17 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <MapPin className="h-4 w-4 text-[#4caf6d]" />
             Endereço de entrega
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {isPickup && (
+            <p className="-mt-3 mb-4 text-sm text-[#5f7767]">
+              Não precisa preencher — você escolheu retirar na loja (ver opção "Frete" abaixo).
+            </p>
+          )}
+          <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isPickup ? "opacity-50" : ""}`}>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">CEP</label>
               <div className="relative">
                 <input
-                  required
+                  required={!isPickup}
                   value={address.cep}
                   onChange={(e) => updateAddress("cep", formatCEP(e.target.value))}
                   onBlur={handleCepBlur}
@@ -214,7 +227,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">Número</label>
               <input
-                required
+                required={!isPickup}
                 value={address.number}
                 onChange={(e) => updateAddress("number", e.target.value)}
                 className="w-full rounded-lg border border-[#e3e6de] px-3 py-2.5 text-sm outline-none focus:border-[#4caf6d]"
@@ -224,7 +237,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">Rua</label>
               <input
-                required
+                required={!isPickup}
                 value={address.street}
                 onChange={(e) => updateAddress("street", e.target.value)}
                 className="w-full rounded-lg border border-[#e3e6de] px-3 py-2.5 text-sm outline-none focus:border-[#4caf6d]"
@@ -234,7 +247,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">Bairro</label>
               <input
-                required
+                required={!isPickup}
                 value={address.neighborhood}
                 onChange={(e) => updateAddress("neighborhood", e.target.value)}
                 className="w-full rounded-lg border border-[#e3e6de] px-3 py-2.5 text-sm outline-none focus:border-[#4caf6d]"
@@ -243,7 +256,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">Cidade</label>
               <input
-                required
+                required={!isPickup}
                 value={address.city}
                 onChange={(e) => updateAddress("city", e.target.value)}
                 className="w-full rounded-lg border border-[#e3e6de] px-3 py-2.5 text-sm outline-none focus:border-[#4caf6d]"
@@ -252,7 +265,7 @@ export default function CheckoutForm({ items }: { items: CheckoutCartItem[] }) {
             <div>
               <label className="mb-1 block text-sm font-medium text-[#1f2b23]">Estado</label>
               <select
-                required
+                required={!isPickup}
                 value={address.state}
                 onChange={(e) => updateAddress("state", e.target.value)}
                 className="w-full rounded-lg border border-[#e3e6de] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#4caf6d]"

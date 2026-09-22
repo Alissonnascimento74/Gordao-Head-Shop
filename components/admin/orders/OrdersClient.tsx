@@ -224,7 +224,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
               {visibleOrders.map((order) => {
                 const canShip = order.status === "pago" || order.status === "separando";
                 const expanded = expandedOrderId === order.id;
-                const hasDetails = Boolean(order.customerEmail || order.customerCPF || order.shippingAddress);
+                const hasDetails = Boolean(
+                  order.customerEmail || order.customerCPF || order.shippingAddress || order.shippingMethod
+                );
                 return (
                   <Fragment key={order.id}>
                     <tr className="hover:bg-slate-50">
@@ -275,20 +277,16 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               {order.customerEmail && <p className="text-slate-700">{order.customerEmail}</p>}
                               {order.customerCPF && <p className="text-slate-700">CPF: {formatCPF(order.customerCPF)}</p>}
                             </div>
-                            {order.shippingAddress && (
+                            {(order.shippingAddress || order.shippingMethod) && (
                               <div>
-                                <p className="mb-1 font-semibold text-slate-500">Endereço de entrega</p>
-                                <p className="text-slate-700">
-                                  {order.shippingAddress.street}, {order.shippingAddress.number}
-                                </p>
-                                <p className="text-slate-700">
-                                  {order.shippingAddress.neighborhood} — {order.shippingAddress.city}/
-                                  {order.shippingAddress.state}
-                                </p>
-                                <p className="text-slate-700">CEP: {order.shippingAddress.cep}</p>
+                                <p className="mb-1 font-semibold text-slate-500">Entrega</p>
                                 {order.shippingMethod && (
-                                  <p className="mt-1 font-medium text-slate-700">
-                                    {order.shippingMethod.isExpress ? "🏍️ " : "📦 "}
+                                  <p className="font-medium text-slate-700">
+                                    {order.shippingMethod.carrier === "Retirada"
+                                      ? "🏬 "
+                                      : order.shippingMethod.isExpress
+                                        ? "🏍️ "
+                                        : "📦 "}
                                     {order.shippingMethod.label} —{" "}
                                     {formatCurrency(order.shippingMethod.price)}
                                   </p>
@@ -298,17 +296,35 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                     ⚠️ Despacho Manual via App
                                   </span>
                                 )}
-                                <div className="flex flex-wrap gap-2">
-                                  <CopyAddressButton address={order.shippingAddress} />
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePrintLabel(order)}
-                                    className="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
-                                  >
-                                    <Printer className="h-3.5 w-3.5" />
-                                    Imprimir etiqueta
-                                  </button>
-                                </div>
+                                {order.shippingAddress ? (
+                                  <>
+                                    <p className="mt-1 text-slate-700">
+                                      {order.shippingAddress.street}, {order.shippingAddress.number}
+                                    </p>
+                                    <p className="text-slate-700">
+                                      {order.shippingAddress.neighborhood} — {order.shippingAddress.city}/
+                                      {order.shippingAddress.state}
+                                    </p>
+                                    <p className="text-slate-700">CEP: {order.shippingAddress.cep}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      <CopyAddressButton address={order.shippingAddress} />
+                                      <button
+                                        type="button"
+                                        onClick={() => handlePrintLabel(order)}
+                                        className="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                                      >
+                                        <Printer className="h-3.5 w-3.5" />
+                                        Imprimir etiqueta
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  // Retirada na loja — sem endereço porque não há envio: nada pra
+                                  // copiar nem etiqueta pra imprimir, só separar e avisar o cliente.
+                                  <p className="mt-1 text-slate-500">
+                                    Cliente retira na loja — sem necessidade de envio.
+                                  </p>
+                                )}
                               </div>
                             )}
                             <div>

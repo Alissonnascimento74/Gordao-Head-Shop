@@ -21,6 +21,7 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { PRODUCTS } from "@/app/products";
 import { createOrder, attachMercadoPagoPreference } from "@/lib/server/orders-store";
 import { calculateShippingOptions } from "@/lib/shipping/calculate";
+import { PICKUP_OPTION, type ShippingOption } from "@/lib/shipping/types";
 import { isValidCPF } from "@/utils/validators";
 import type { OrderItem, ShippingAddress } from "@/lib/admin/types";
 
@@ -37,8 +38,9 @@ type CheckoutRequestBody = {
     cpf: string;
     phone: string;
   };
-  shippingAddress: ShippingAddress;
-  /** Id da opção escolhida em ShippingCalculator.tsx (ex.: "pac", "99-entrega") — nunca o preço. */
+  /** Ausente quando `shippingOptionId` é "retirar" — retirada na loja não precisa de endereço. */
+  shippingAddress?: ShippingAddress;
+  /** Id da opção escolhida em ShippingCalculator.tsx (ex.: "pac", "99-entrega", "retirar") — nunca o preço. */
   shippingOptionId: string;
 };
 
@@ -77,25 +79,38 @@ export async function POST(request: Request) {
   if (!isValidCPF(body.customer.cpf || "")) {
     return NextResponse.json({ error: "CPF inválido." }, { status: 400 });
   }
-  const address = body.shippingAddress;
-  if (!address?.cep || !address?.street || !address?.number || !address?.city || !address?.state) {
-    return NextResponse.json({ error: "Preencha o endereço de entrega completo." }, { status: 400 });
-  }
   if (!body.shippingOptionId) {
     return NextResponse.json({ error: "Selecione uma opção de frete." }, { status: 400 });
   }
 
-  // --- Recalcula o frete a partir do CEP, no servidor — nunca confia no
-  //     preço de frete vindo do navegador (mesma lógica de segurança do
-  //     preço dos produtos, logo abaixo). O front só manda QUAL opção
+  // --- "Retirar na loja" é um caso especial: não depende de CEP nenhum,
+  //     então nem chama calculateShippingOptions (que existe só pra
+  //     cotar transportadoras a partir de uma distância). Qualquer outra
+  //     opção precisa de um endereço de entrega completo, recalculado a
+  //     partir do CEP aqui no servidor — nunca confiando no preço de
+  //     frete que o navegador mandou de volta (mesma lógica de segurança
+  //     do preço dos produtos, logo abaixo). O front só manda QUAL opção
   //     foi escolhida (ex.: "99-entrega"); o preço vem sempre daqui. ---
-  const { options: shippingOptions } = await calculateShippingOptions(address.cep);
-  const shippingOption = shippingOptions.find((opt) => opt.id === body.shippingOptionId);
-  if (!shippingOption) {
-    // Cobre tanto id inventado quanto o caso de o 99 Entrega ter sido
-    // escolhido pro CEP errado (ex.: fora da região metropolitana) —
-    // nesse caso ele nem aparece na lista recalculada, então some aqui.
-    return NextResponse.json({ error: "Opção de frete inválida para esse CEP." }, { status: 400 });
+  const isPickup = body.shippingOptionId === PICKUP_OPTION.id;
+  let address: ShippingAddress | undefined;
+  let shippingOption: ShippingOption;
+
+  if (isPickup) {
+    shippingOption = PICKUP_OPTION;
+  } else {
+    address = body.shippingAddress;
+    if (!address?.cep || !address?.street || !address?.number || !address?.city || !address?.state) {
+      return NextResponse.json({ error: "Preencha o endereço de entrega completo." }, { status: 400 });
+    }
+    const { options: shippingOptions } = await calculateShippingOptions(address.cep);
+    const found = shippingOptions.find((opt) => opt.id === body.shippingOptionId);
+    if (!found) {
+      // Cobre tanto id inventado quanto o caso de o 99 Entrega ter sido
+      // escolhido pro CEP errado (ex.: fora da região metropolitana) —
+      // nesse caso ele nem aparece na lista recalculada, então some aqui.
+      return NextResponse.json({ error: "Opção de frete inválida para esse CEP." }, { status: 400 });
+    }
+    shippingOption = found;
   }
 
   // --- Recalcula os preços a partir do catálogo real (nunca confia no
