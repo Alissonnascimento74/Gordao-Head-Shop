@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { PRODUCTS } from "@/app/products";
 import { createOrder, attachMercadoPagoPreference } from "@/lib/server/orders-store";
+import { getStock } from "@/lib/server/stock-store";
 import { calculateShippingOptions } from "@/lib/shipping/calculate";
 import { PICKUP_OPTION, type ShippingOption } from "@/lib/shipping/types";
 import { isValidCPF } from "@/utils/validators";
@@ -124,11 +125,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Produto ${cartItem.id} não encontrado.` }, { status: 400 });
     }
     if (cartItem.quantity < 1) continue;
-    if ((product.stock ?? 0) < cartItem.quantity) {
+    // Estoque de verdade (Redis, lib/server/stock-store.ts) — não o número
+    // estático do catálogo. Só CONFERE aqui; a baixa de verdade acontece no
+    // webhook, quando o pagamento é confirmado (ver stock-store.ts pro
+    // porquê de não decrementar já aqui).
+    const currentStock = await getStock(product.id);
+    if (currentStock < cartItem.quantity) {
       return NextResponse.json({ error: `"${product.name}" não tem estoque suficiente.` }, { status: 409 });
     }
 
-    orderItems.push({ productName: product.name, quantity: cartItem.quantity, unitPrice: product.price });
+    orderItems.push({
+      productId: product.id,
+      productName: product.name,
+      quantity: cartItem.quantity,
+      unitPrice: product.price,
+    });
     mpItems.push({
       id: product.id,
       title: product.name,

@@ -26,13 +26,21 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
 export default function StatusBadge({
   status,
   isPickup,
+  isPhysical,
 }: {
   status: OrderStatus;
   /** true = pedido de retirada na loja — "despachado" vira "Retirado" (não existe despacho pra quem busca pessoalmente). */
   isPickup?: boolean;
+  /** true = venda física registrada no PDV — "despachado" vira "Venda balcão" (não existe despacho nem retirada, o cliente já levou o produto). */
+  isPhysical?: boolean;
 }) {
   const config = STATUS_CONFIG[status];
-  const label = status === "despachado" && isPickup ? "Retirado" : config.label;
+  const label =
+    status === "despachado" && isPhysical
+      ? "Venda balcão"
+      : status === "despachado" && isPickup
+        ? "Retirado"
+        : config.label;
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
       {label}

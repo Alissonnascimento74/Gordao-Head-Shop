@@ -26,7 +26,8 @@
 
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, WebhookSignatureValidator } from "mercadopago";
-import { updateOrderStatus } from "@/lib/server/orders-store";
+import { getOrderByExternalReference, updateOrderStatus } from "@/lib/server/orders-store";
+import { adjustStock } from "@/lib/server/stock-store";
 import type { OrderStatus } from "@/lib/admin/types";
 
 // Mapeia os status do Mercado Pago pros status que o painel Admin entende.
@@ -107,6 +108,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, skipped: true });
     }
 
+    // Busca o pedido ANTES de atualizar — preciso saber se ele já estava
+    // "pago" pra não baixar estoque duas vezes (o Mercado Pago reenvia a
+    // mesma notificação várias vezes até receber 200; sem essa checagem,
+    // cada reenvio decrementaria o estoque de novo pro mesmo pagamento).
+    const before = await getOrderByExternalReference(orderId);
+    const wasAlreadyPaid = before?.status === "pago";
+
     // --- 3) Atualiza o pedido no orders-store (troque por UPDATE no seu
     //     banco de verdade quando plugar o ORM — ver lib/server/orders-store.ts) ---
     const updated = await updateOrderStatus(orderId, newStatus, {
@@ -119,6 +127,17 @@ export async function POST(request: Request) {
       // diferente — ver o aviso no topo de orders-store.ts). Com um
       // banco de verdade isso não aconteceria.
       console.warn(`Webhook: pedido ${orderId} não encontrado no orders-store.`);
+    } else if (newStatus === "pago" && !wasAlreadyPaid) {
+      // Pagamento confirmado pela primeira vez — agora sim baixa o
+      // estoque de verdade (ver o "porquê não decrementar no checkout"
+      // em lib/server/stock-store.ts). Falha ao baixar estoque não deve
+      // derrubar a confirmação do pagamento (o pedido já está marcado
+      // como pago, o que importa mais) — só loga pra investigar depois.
+      try {
+        await Promise.all(updated.items.map((item) => adjustStock(item.productId, -item.quantity)));
+      } catch (stockErr) {
+        console.error(`Webhook: falha ao baixar estoque do pedido ${orderId}:`, stockErr);
+      }
     }
 
     return NextResponse.json({ received: true });

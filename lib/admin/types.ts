@@ -24,10 +24,17 @@ export type AdminProduct = {
 export type OrderStatus = "aguardando_pagamento" | "pago" | "cancelado" | "separando" | "despachado";
 
 export type OrderItem = {
+  /** Id do produto no catálogo (app/products.ts) — usado pra baixar
+   *  estoque (lib/server/stock-store.ts) quando o pedido é confirmado. */
+  productId: string;
   productName: string;
   quantity: number;
   unitPrice: number;
 };
+
+/** Forma de pagamento de uma venda física (PDV) — nada a ver com o
+ *  Mercado Pago, que só existe pro checkout online. */
+export type PhysicalPaymentMethod = "dinheiro" | "pix" | "cartao_credito" | "cartao_debito";
 
 /** Endereço de entrega completo, coletado no checkout (ver components/checkout/CheckoutForm.tsx). */
 export type ShippingAddress = {
@@ -68,4 +75,10 @@ export type Order = {
   mpPreferenceId?: string;
   /** Id do pagamento aprovado, preenchido pelo webhook quando o MP confirma. */
   mpPaymentId?: string;
+  /** "fisico" = venda de balcão lançada no PDV (ver /admin/pdv). Ausente/"online" =
+   *  veio do checkout do site — é a distinção que a Dashboard usa pra separar
+   *  "Vendas Online" de "Vendas Balcão" e fechar o caixa. */
+  source?: "online" | "fisico";
+  /** Só preenchido em vendas físicas (source: "fisico") — como o cliente pagou no balcão. */
+  paymentMethodPhysical?: PhysicalPaymentMethod;
 };

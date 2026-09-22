@@ -121,10 +121,13 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
 
   /**
    * Aumenta ou diminui o estoque de um produto em `delta` unidades
-   * (delta = -1 no botão "-", +1 no botão "+"). Nunca deixa o estoque
-   * ficar negativo, e marca como esgotado automaticamente ao chegar a 0.
+   * (delta = -1 no botão "-", +1 no botão "+"). Persiste de verdade no
+   * Redis (lib/server/stock-store.ts) — o mesmo estoque que o PDV e o
+   * checkout online enxergam, por isso o valor final vem do servidor
+   * (HINCRBY é atômico lá; se uma venda acontecer ao mesmo tempo, o
+   * número otimista daqui pode ficar levemente defasado por um instante).
    */
-  function adjustStock(id: string, delta: number) {
+  async function adjustStock(id: string, delta: number) {
     setProducts((prev) =>
       prev.map((product) => {
         if (product.id !== id) return product;
@@ -132,6 +135,24 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
         return { ...product, stock, soldOut: stock === 0 ? true : product.soldOut };
       })
     );
+
+    try {
+      const response = await fetch(`/api/admin/products/${id}/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta }),
+      });
+      if (!response.ok) return;
+      const data: { stock: number } = await response.json();
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === id ? { ...product, stock: data.stock, soldOut: data.stock <= 0 } : product
+        )
+      );
+    } catch {
+      // Falha de rede — fica com o valor otimista; o próximo carregamento
+      // da página traz o valor real do Redis.
+    }
   }
 
   /** Alterna manualmente entre "Disponível" e "Esgotado" pra um produto. */

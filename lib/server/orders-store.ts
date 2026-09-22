@@ -28,7 +28,14 @@
 
 import { redis } from "@/lib/server/redis";
 import { MOCK_ORDERS } from "@/lib/admin/mock-data";
-import type { Order, OrderItem, OrderShippingMethod, OrderStatus, ShippingAddress } from "@/lib/admin/types";
+import type {
+  Order,
+  OrderItem,
+  OrderShippingMethod,
+  OrderStatus,
+  PhysicalPaymentMethod,
+  ShippingAddress,
+} from "@/lib/admin/types";
 
 const ORDER_KEY = (id: string) => `gh:order:${id}`;
 const INDEX_KEY = "gh:orders:index";
@@ -47,6 +54,13 @@ export type NewOrderInput = {
   shippingMethod?: OrderShippingMethod;
   items: OrderItem[];
   total: number;
+  /** Default "online" (checkout do site). Vendas do PDV passam "fisico". */
+  source?: "online" | "fisico";
+  paymentMethodPhysical?: PhysicalPaymentMethod;
+  /** Default "aguardando_pagamento" (checkout online, espera o webhook).
+   *  O PDV passa "despachado" direto — venda física já é paga e entregue
+   *  na hora, não tem pagamento pendente nem despacho a fazer. */
+  status?: OrderStatus;
 };
 
 // Semeia o Redis com os pedidos de exemplo, uma única vez (pra não
@@ -75,11 +89,14 @@ function seedIfNeeded(): Promise<void> {
 }
 
 /**
- * Cria um pedido novo com status "aguardando_pagamento" — chamada pela
- * rota de checkout (app/api/checkout/route.ts) assim que a Preference é
- * criada no Mercado Pago, ANTES de o cliente pagar. O `id` devolvido vira
- * o `external_reference` mandado pro Mercado Pago, que é como o webhook
- * (mais tarde) vai saber qual pedido atualizar.
+ * Cria um pedido novo. Duas chamadas diferentes:
+ *   - Checkout online (app/api/checkout/route.ts): status
+ *     "aguardando_pagamento" (o default), ANTES de o cliente pagar. O
+ *     `id` devolvido vira o `external_reference` mandado pro Mercado
+ *     Pago, que é como o webhook (mais tarde) vai saber qual pedido
+ *     atualizar.
+ *   - PDV (app/api/admin/pos/route.ts): status "despachado" direto,
+ *     `source: "fisico"` — venda de balcão já é paga e entregue na hora.
  */
 export async function createOrder(input: NewOrderInput): Promise<Order> {
   const order: Order = {
@@ -92,8 +109,10 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
     shippingMethod: input.shippingMethod,
     items: input.items,
     total: input.total,
-    status: "aguardando_pagamento",
+    status: input.status ?? "aguardando_pagamento",
     createdAt: new Date().toISOString(),
+    source: input.source ?? "online",
+    paymentMethodPhysical: input.paymentMethodPhysical,
   };
 
   if (redis) {

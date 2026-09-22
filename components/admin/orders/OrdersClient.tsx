@@ -34,6 +34,15 @@ const FILTERS: { value: OrderStatus | "todos"; label: string }[] = [
   { value: "despachado", label: "Despachado" },
 ];
 
+// Filtro por CANAL — independente do filtro por status acima. Existe
+// pra separar vendas do PDV das vendas online (pedido explícito do
+// lojista: "não misturar com os pedidos online").
+const SOURCE_FILTERS: { value: "todos" | "online" | "fisico"; label: string }[] = [
+  { value: "todos", label: "Todos os canais" },
+  { value: "online", label: "Só online" },
+  { value: "fisico", label: "Só balcão (PDV)" },
+];
+
 const POLL_INTERVAL_MS = 15_000;
 
 function formatCurrency(value: number) {
@@ -43,6 +52,13 @@ function formatCurrency(value: number) {
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
+
+const PHYSICAL_PAYMENT_LABELS: Record<string, string> = {
+  dinheiro: "Dinheiro",
+  pix: "Pix",
+  cartao_credito: "Cartão de Crédito (Maquininha)",
+  cartao_debito: "Cartão de Débito",
+};
 
 function formatCPF(cpf: string) {
   const digits = cpf.replace(/\D/g, "");
@@ -97,6 +113,7 @@ function CopyAddressButton({ address }: { address: ShippingAddress }) {
 export default function OrdersClient({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders] = useState(initialOrders);
   const [filter, setFilter] = useState<OrderStatus | "todos">("todos");
+  const [sourceFilter, setSourceFilter] = useState<"todos" | "online" | "fisico">("todos");
   const [orderToShip, setOrderToShip] = useState<Order | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,7 +168,12 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
     return () => clearInterval(interval);
   }, []);
 
-  const visibleOrders = filter === "todos" ? orders : orders.filter((order) => order.status === filter);
+  const visibleOrders = orders.filter((order) => {
+    const statusMatch = filter === "todos" || order.status === filter;
+    const source = order.source ?? "online";
+    const sourceMatch = sourceFilter === "todos" || source === sourceFilter;
+    return statusMatch && sourceMatch;
+  });
 
   async function handleConfirmShip(orderId: string, trackingCode: string) {
     // Atualização otimista: a tela muda na hora, sem esperar o servidor
@@ -206,6 +228,22 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-2 print:hidden">
+        {SOURCE_FILTERS.map((item) => (
+          <button
+            key={item.value}
+            onClick={() => setSourceFilter(item.value)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              sourceFilter === item.value
+                ? "bg-brand-green text-brand-darker"
+                : "border border-slate-200 text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -224,9 +262,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
               {visibleOrders.map((order) => {
                 const canShip = order.status === "pago" || order.status === "separando";
                 const isPickup = order.shippingMethod?.carrier === "Retirada";
+                const isPhysical = order.source === "fisico";
                 const expanded = expandedOrderId === order.id;
                 const hasDetails = Boolean(
-                  order.customerEmail || order.customerCPF || order.shippingAddress || order.shippingMethod
+                  order.customerEmail ||
+                    order.customerCPF ||
+                    order.shippingAddress ||
+                    order.shippingMethod ||
+                    order.paymentMethodPhysical
                 );
                 return (
                   <Fragment key={order.id}>
@@ -239,7 +282,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                       <td className="px-5 py-3 text-slate-500">{formatDate(order.createdAt)}</td>
                       <td className="px-5 py-3 font-medium text-slate-700">{formatCurrency(order.total)}</td>
                       <td className="px-5 py-3">
-                        <StatusBadge status={order.status} isPickup={isPickup} />
+                        <StatusBadge status={order.status} isPickup={isPickup} isPhysical={isPhysical} />
                         {order.trackingCode && (
                           <p className="mt-1 text-xs text-slate-400">Rastreio: {order.trackingCode}</p>
                         )}
@@ -326,6 +369,15 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                     Cliente retira na loja — sem necessidade de envio.
                                   </p>
                                 )}
+                              </div>
+                            )}
+                            {order.paymentMethodPhysical && (
+                              <div>
+                                <p className="mb-1 font-semibold text-slate-500">Venda no balcão</p>
+                                <p className="text-slate-700">
+                                  💵 {PHYSICAL_PAYMENT_LABELS[order.paymentMethodPhysical] ?? order.paymentMethodPhysical}
+                                </p>
+                                <p className="mt-1 text-slate-500">Lançada direto pelo PDV — pago e entregue na hora.</p>
                               </div>
                             )}
                             <div>

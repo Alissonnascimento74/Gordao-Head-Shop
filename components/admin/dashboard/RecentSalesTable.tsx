@@ -34,7 +34,11 @@ export default function RecentSalesTable({ orders }: { orders: Order[] }) {
                 <td className="px-5 py-3 text-slate-500">{formatDate(order.createdAt)}</td>
                 <td className="px-5 py-3 font-medium text-slate-700">{formatCurrency(order.total)}</td>
                 <td className="px-5 py-3">
-                  <StatusBadge status={order.status} isPickup={order.shippingMethod?.carrier === "Retirada"} />
+                  <StatusBadge
+                    status={order.status}
+                    isPickup={order.shippingMethod?.carrier === "Retirada"}
+                    isPhysical={order.source === "fisico"}
+                  />
                 </td>
               </tr>
             ))}

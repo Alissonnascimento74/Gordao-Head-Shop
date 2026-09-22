@@ -4,13 +4,15 @@ type MetricCardProps = {
   label: string;
   value: string;
   icon: LucideIcon;
-  accent: "green" | "amber" | "red";
+  accent: "green" | "amber" | "red" | "blue" | "violet";
 };
 
 const ACCENT_CLASSES: Record<MetricCardProps["accent"], string> = {
   green: "bg-emerald-50 text-emerald-600",
   amber: "bg-amber-50 text-amber-600",
   red: "bg-red-50 text-red-600",
+  blue: "bg-sky-50 text-sky-600",
+  violet: "bg-violet-50 text-violet-600",
 };
 
 export default function MetricCard({ label, value, icon: Icon, accent }: MetricCardProps) {
