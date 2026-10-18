@@ -40,8 +40,6 @@ const WHATSAPP_NUMBER = "5511997306428"; // Número do WhatsApp Business do Gord
 // a mesma inteligência usada no Painel Admin e na Vitrine de demonstração — troca
 // as 3 categorias fixas de antes (Tabaco/Sedas e Piteiras/Acessórios) por todas as
 // que realmente aparecem no catálogo de 482 produtos.
-const CATEGORIES: { id: CategoryId; label: string }[] = getAvailableCategories(PRODUCTS.map((p) => p.name));
-
 const SLOGAN_LINE_1 = "Se você não gosta,";
 const SLOGAN_LINE_2 = "conhece alguém que gosta.";
 const SLOGAN_LINE_3 = "Tudo para sua sessão ficar mais leve.";
@@ -117,6 +115,7 @@ export default function GordaoHeadShopPage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [cartOpen, setCartOpen] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
   const [addedToastVisible, setAddedToastVisible] = useState(false);
@@ -126,6 +125,17 @@ export default function GordaoHeadShopPage() {
     const t = setTimeout(() => setHeroIn(true), 80);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/catalog/products", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Falha ao carregar catálogo")))
+      .then((data: { products: Product[] }) => { if (active && Array.isArray(data.products)) setProducts(data.products); })
+      .catch(() => { /* Mantém o catálogo incluído na página se a API estiver indisponível. */ });
+    return () => { active = false; };
+  }, []);
+
+  const categories = useMemo(() => getAvailableCategories(products.map((product) => product.name)), [products]);
 
   // Some sozinho depois de 3s. Se o cliente adicionar outro produto antes
   // disso, reinicia a contagem (clearTimeout) em vez de empilhar avisos.
@@ -142,12 +152,12 @@ export default function GordaoHeadShopPage() {
   }
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((p) => {
+    return products.filter((p) => {
       const matchesCategory = activeCategory === "todos" || parseProductCategory(p.name) === activeCategory;
       const matchesQuery = p.name.toLowerCase().includes(query.trim().toLowerCase());
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, query]);
+  }, [products, activeCategory, query]);
 
   // Ao trocar de categoria, rola pro topo da seção de produtos — sem isso, quem
   // já tinha descido a página fica olhando pro meio de uma lista diferente,
@@ -217,7 +227,7 @@ export default function GordaoHeadShopPage() {
         onCartClick={() => setCartOpen(true)}
         activeCategory={activeCategory}
         onCategoryChange={handleCategoryChange}
-        categories={CATEGORIES}
+        categories={categories}
       />
 
       {/* ---------------- Hero ---------------- */}
@@ -283,7 +293,7 @@ export default function GordaoHeadShopPage() {
 
           <div className="mt-5 -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
             {FEATURED_PRODUCTS.map((featured) => {
-              const product = PRODUCTS.find((p) => p.id === featured.id);
+              const product = products.find((p) => p.id === featured.id);
               if (!product) return null;
               const outOfStock = product.stock === 0;
               return (
@@ -346,7 +356,7 @@ export default function GordaoHeadShopPage() {
             <h2 className="font-display text-2xl text-[#1f2b23] sm:text-3xl">
               {activeCategory === "todos"
                 ? "Catálogo"
-                : CATEGORIES.find((c) => c.id === activeCategory)?.label}
+                : categories.find((c) => c.id === activeCategory)?.label}
             </h2>
             <p className="mt-1 text-sm text-[#5f7767]">
               {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "itens"}

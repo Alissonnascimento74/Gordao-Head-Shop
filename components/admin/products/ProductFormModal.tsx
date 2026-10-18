@@ -49,7 +49,7 @@ type ProductFormModalProps = {
   /** Produto a editar; null/undefined = modal no modo "adicionar novo". */
   editingProduct?: AdminProduct | null;
   onClose: () => void;
-  onSave: (product: AdminProduct) => void;
+  onSave: (product: AdminProduct) => Promise<void>;
 };
 
 const BLANK_FORM = { name: "", price: "", stock: "" };
@@ -65,6 +65,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [imageScale, setImageScale] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const isEditing = Boolean(editingProduct);
 
@@ -106,10 +107,11 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
+    setSaveError("");
 
-    const imageUrl = rawImage ? await bakeImageToDataUrl(rawImage, imageScale) : editingProduct?.imageUrl;
-
-    onSave({
+    try {
+      const imageUrl = rawImage ? await bakeImageToDataUrl(rawImage, imageScale) : editingProduct?.imageUrl;
+      await onSave({
       id: editingProduct?.id ?? `NOVO-${Date.now()}`,
       name,
       imageUrl,
@@ -119,14 +121,17 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       featured: editingProduct?.featured,
       promoLabel: editingProduct?.promoLabel,
       categoryOverride: category,
-    });
-    setSaving(false);
-    onClose();
+      });
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Erro ao salvar produto.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Modal open={open} onClose={onClose} title={isEditing ? "Editar produto" : "Adicionar novo produto"}>
-      {/* Esqueleto de formulário — falta plugar persistência na API (upload de imagem já funciona). */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Nome</label>
@@ -221,6 +226,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
             {saving ? "Salvando..." : "Salvar"}
           </button>
         </div>
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
       </form>
     </Modal>
   );

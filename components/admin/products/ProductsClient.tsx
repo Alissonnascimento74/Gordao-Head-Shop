@@ -148,11 +148,18 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delta }),
       });
-      if (!response.ok) return;
-      const data: { stock: number } = await response.json();
+      const data: { stock?: number } = await response.json();
+      if (!response.ok) {
+        if (typeof data.stock === "number") {
+          setProducts((prev) => prev.map((product) => product.id === id ? { ...product, stock: data.stock!, soldOut: data.stock! <= 0 } : product));
+        }
+        return;
+      }
+      if (typeof data.stock !== "number") return;
+      const confirmedStock = data.stock;
       setProducts((prev) =>
         prev.map((product) =>
-          product.id === id ? { ...product, stock: data.stock, soldOut: data.stock <= 0 } : product
+          product.id === id ? { ...product, stock: confirmedStock, soldOut: confirmedStock <= 0 } : product
         )
       );
     } catch {
@@ -184,7 +191,13 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
    * (edição); senão, adiciona no topo (produto novo). O próprio
    * ProductFormModal decide se reaproveita o id (editando) ou gera um novo.
    */
-  function handleSaveProduct(product: AdminProduct) {
+  async function handleSaveProduct(product: AdminProduct) {
+    const response = await fetch("/api/admin/products", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(product),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Falha ao salvar o produto.");
+    product = data.product;
     setProducts((prev) => {
       const alreadyExists = prev.some((p) => p.id === product.id);
       if (alreadyExists) {

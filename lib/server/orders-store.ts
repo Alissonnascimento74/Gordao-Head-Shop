@@ -45,6 +45,7 @@ const SEEDED_KEY = "gh:orders:seeded";
 const memoryOrders: Order[] = [...MOCK_ORDERS];
 
 export type NewOrderInput = {
+  id?: string;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -61,6 +62,7 @@ export type NewOrderInput = {
    *  O PDV passa "despachado" direto — venda física já é paga e entregue
    *  na hora, não tem pagamento pendente nem despacho a fazer. */
   status?: OrderStatus;
+  stockReserved?: boolean;
 };
 
 // Semeia o Redis com os pedidos de exemplo, uma única vez (pra não
@@ -100,7 +102,7 @@ function seedIfNeeded(): Promise<void> {
  */
 export async function createOrder(input: NewOrderInput): Promise<Order> {
   const order: Order = {
-    id: `PED-${Date.now()}`,
+    id: input.id ?? `PED-${crypto.randomUUID()}`,
     customerName: input.customerName,
     customerPhone: input.customerPhone,
     customerEmail: input.customerEmail,
@@ -113,6 +115,7 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
     createdAt: new Date().toISOString(),
     source: input.source ?? "online",
     paymentMethodPhysical: input.paymentMethodPhysical,
+    stockReserved: input.stockReserved,
   };
 
   if (redis) {

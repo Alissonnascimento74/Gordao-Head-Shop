@@ -10,7 +10,7 @@
 // Obsidian / commit do módulo PDV).
 import type { Metadata } from "next";
 import ProductsClient from "@/components/admin/products/ProductsClient";
-import { MOCK_PRODUCTS } from "@/lib/admin/mock-data";
+import { getProducts } from "@/lib/server/products-store";
 import { getProductCosts } from "@/lib/server/product-costs";
 import { getStockMap } from "@/lib/server/stock-store";
 
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ProdutosPage() {
-  const [costs, stockMap] = await Promise.all([getProductCosts(), getStockMap()]);
-  const products = MOCK_PRODUCTS.map((product) => {
+  const [catalog, costs, stockMap] = await Promise.all([getProducts(), getProductCosts(), getStockMap()]);
+  const products = catalog.map((product) => {
     const stock = stockMap[product.id] ?? product.stock;
     return {
       ...product,

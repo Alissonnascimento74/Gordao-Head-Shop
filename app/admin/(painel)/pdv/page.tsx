@@ -7,7 +7,7 @@
  * sem isso, o lojista veria estoque desatualizado ao abrir o PDV.
  */
 import type { Metadata } from "next";
-import { PRODUCTS } from "@/app/products";
+import { getCatalogProducts } from "@/lib/server/products-store";
 import { getStockMap } from "@/lib/server/stock-store";
 import PosClient from "@/components/admin/pos/PosClient";
 
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PdvPage() {
-  const stockMap = await getStockMap();
-  const products = PRODUCTS.map((product) => ({
+  const [catalog, stockMap] = await Promise.all([getCatalogProducts(), getStockMap()]);
+  const products = catalog.map((product) => ({
     id: product.id,
     name: product.name,
     price: product.price,

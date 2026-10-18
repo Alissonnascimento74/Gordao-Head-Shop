@@ -90,4 +90,6 @@ export type Order = {
   source?: "online" | "fisico";
   /** Só preenchido em vendas físicas (source: "fisico") — como o cliente pagou no balcão. */
   paymentMethodPhysical?: PhysicalPaymentMethod;
+  /** Indica que o estoque foi reservado atomicamente antes de cobrar/vender. */
+  stockReserved?: boolean;
 };

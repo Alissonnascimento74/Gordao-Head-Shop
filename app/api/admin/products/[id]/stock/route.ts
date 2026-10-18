@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin/auth-config";
-import { adjustStock } from "@/lib/server/stock-store";
+import { adjustStock, getStock } from "@/lib/server/stock-store";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
@@ -25,10 +25,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null);
   const delta = Number(body?.delta);
 
-  if (!Number.isFinite(delta) || delta === 0) {
-    return NextResponse.json({ error: "delta é obrigatório e não pode ser zero." }, { status: 400 });
+  if (!Number.isSafeInteger(delta) || delta === 0) {
+    return NextResponse.json({ error: "delta deve ser um inteiro diferente de zero." }, { status: 400 });
   }
 
   const stock = await adjustStock(id, delta);
+  if (stock < 0) return NextResponse.json({ error: "Estoque não pode ficar negativo.", stock: await getStock(id) }, { status: 409 });
   return NextResponse.json({ stock });
 }

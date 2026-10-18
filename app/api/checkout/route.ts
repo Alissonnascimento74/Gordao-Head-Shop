@@ -18,9 +18,9 @@
 
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import { PRODUCTS } from "@/app/products";
-import { createOrder, attachMercadoPagoPreference } from "@/lib/server/orders-store";
-import { getStock } from "@/lib/server/stock-store";
+import { getCatalogProducts } from "@/lib/server/products-store";
+import { createOrder, attachMercadoPagoPreference, updateOrderStatus } from "@/lib/server/orders-store";
+import { releaseStockReservation, reserveStock } from "@/lib/server/stock-store";
 import { calculateShippingOptions } from "@/lib/shipping/calculate";
 import { PICKUP_OPTION, type ShippingOption } from "@/lib/shipping/types";
 import { isValidCPF } from "@/utils/validators";
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   }
 
   // --- Validação básica dos dados obrigatórios -----------------------
-  if (!body.items || body.items.length === 0) {
+  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 100) {
     return NextResponse.json({ error: "Carrinho vazio." }, { status: 400 });
   }
   if (!body.customer?.name?.trim() || !body.customer?.email?.trim() || !body.customer?.phone?.trim()) {
@@ -116,38 +116,30 @@ export async function POST(request: Request) {
 
   // --- Recalcula os preços a partir do catálogo real (nunca confia no
   //     preço vindo do navegador) -------------------------------------
-  const orderItems: OrderItem[] = [];
-  const mpItems: { id: string; title: string; quantity: number; unit_price: number; currency_id: string }[] = [];
-
+  const orderItemsById = new Map<string, OrderItem>();
+  const products = await getCatalogProducts();
   for (const cartItem of body.items) {
-    const product = PRODUCTS.find((p) => p.id === cartItem.id);
+    if (!cartItem || typeof cartItem.id !== "string" || !Number.isSafeInteger(cartItem.quantity) || cartItem.quantity < 1) {
+      return NextResponse.json({ error: "Item ou quantidade inválida no carrinho." }, { status: 400 });
+    }
+    const product = products.find((p) => p.id === cartItem.id);
     if (!product) {
       return NextResponse.json({ error: `Produto ${cartItem.id} não encontrado.` }, { status: 400 });
     }
-    if (cartItem.quantity < 1) continue;
-    // Estoque de verdade (Redis, lib/server/stock-store.ts) — não o número
-    // estático do catálogo. Só CONFERE aqui; a baixa de verdade acontece no
-    // webhook, quando o pagamento é confirmado (ver stock-store.ts pro
-    // porquê de não decrementar já aqui).
-    const currentStock = await getStock(product.id);
-    if (currentStock < cartItem.quantity) {
-      return NextResponse.json({ error: `"${product.name}" não tem estoque suficiente.` }, { status: 409 });
-    }
-
-    orderItems.push({
+    const existing = orderItemsById.get(product.id);
+    orderItemsById.set(product.id, {
       productId: product.id,
       productName: product.name,
-      quantity: cartItem.quantity,
+      quantity: (existing?.quantity ?? 0) + cartItem.quantity,
       unitPrice: product.price,
     });
-    mpItems.push({
-      id: product.id,
-      title: product.name,
-      quantity: cartItem.quantity,
-      unit_price: product.price,
-      currency_id: "BRL",
-    });
   }
+
+  const orderItems = [...orderItemsById.values()];
+  const mpItems = orderItems.map((item) => ({
+    id: item.productId, title: item.productName, quantity: item.quantity,
+    unit_price: item.unitPrice, currency_id: "BRL",
+  }));
 
   if (mpItems.length === 0) {
     return NextResponse.json({ error: "Nenhum item válido no carrinho." }, { status: 400 });
@@ -170,21 +162,35 @@ export async function POST(request: Request) {
   const total = itemsTotal + shippingOption.price;
 
   // --- Cria o pedido no nosso "banco" (ver lib/server/orders-store.ts) ---
-  const order = await createOrder({
-    customerName: body.customer.name.trim(),
-    customerPhone: body.customer.phone.trim(),
-    customerEmail: body.customer.email.trim(),
-    customerCPF: body.customer.cpf.replace(/\D/g, ""),
-    shippingAddress: address,
-    shippingMethod: {
-      carrier: shippingOption.carrier,
-      label: shippingOption.label,
-      price: shippingOption.price,
-      isExpress: shippingOption.isExpress,
-    },
-    items: orderItems,
-    total,
-  });
+  const reservationId = `PED-${crypto.randomUUID()}`;
+  const reserved = await reserveStock(reservationId, orderItems.map(({ productId, quantity }) => ({ productId, quantity })));
+  if (!reserved) {
+    return NextResponse.json({ error: "Estoque insuficiente para um ou mais produtos." }, { status: 409 });
+  }
+
+  let order;
+  try {
+    order = await createOrder({
+      id: reservationId,
+      customerName: body.customer.name.trim(),
+      customerPhone: body.customer.phone.trim(),
+      customerEmail: body.customer.email.trim(),
+      customerCPF: body.customer.cpf.replace(/\D/g, ""),
+      shippingAddress: address,
+      shippingMethod: {
+        carrier: shippingOption.carrier,
+        label: shippingOption.label,
+        price: shippingOption.price,
+        isExpress: shippingOption.isExpress,
+      },
+      items: orderItems,
+      total,
+      stockReserved: true,
+    });
+  } catch (error) {
+    await releaseStockReservation(reservationId);
+    throw error;
+  }
 
   // --- Instancia o SDK oficial e cria a Preference no Mercado Pago ---
   const client = new MercadoPagoConfig({ accessToken });
@@ -209,6 +215,7 @@ export async function POST(request: Request) {
           identification: { type: "CPF", number: body.customer.cpf.replace(/\D/g, "") },
         },
         notification_url: `${SITE_URL}/api/webhooks/mercadopago`,
+        date_of_expiration: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
         back_urls: {
           success: `${SITE_URL}/pedido-confirmado?pedido=${order.id}`,
           failure: `${SITE_URL}/checkout`,
@@ -227,13 +234,13 @@ export async function POST(request: Request) {
       sandbox_init_point: preference.sandbox_init_point,
     });
   } catch (err) {
+    await releaseStockReservation(order.id);
+    await updateOrderStatus(order.id, "cancelado");
+    console.error(`Falha ao criar preferência do pedido ${order.id}:`, err);
     // O pedido já foi criado (status "aguardando_pagamento") mesmo se o
     // Mercado Pago falhar aqui — fica registrado, e o cliente pode tentar
     // de novo. Em produção, isso é um bom lugar pra logar num serviço de
     // observabilidade (Sentry etc.).
-    return NextResponse.json(
-      { error: "Falha ao criar a preferência de pagamento.", details: String(err), orderId: order.id },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "Falha ao criar a preferência de pagamento." }, { status: 502 });
   }
 }

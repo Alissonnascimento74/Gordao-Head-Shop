@@ -27,7 +27,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, WebhookSignatureValidator } from "mercadopago";
 import { getOrderByExternalReference, updateOrderStatus } from "@/lib/server/orders-store";
-import { adjustStock } from "@/lib/server/stock-store";
+import { commitStockReservation, releaseStockReservation, reserveStock } from "@/lib/server/stock-store";
 import type { OrderStatus } from "@/lib/admin/types";
 
 // Mapeia os status do Mercado Pago pros status que o painel Admin entende.
@@ -108,12 +108,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, skipped: true });
     }
 
-    // Busca o pedido ANTES de atualizar — preciso saber se ele já estava
-    // "pago" pra não baixar estoque duas vezes (o Mercado Pago reenvia a
-    // mesma notificação várias vezes até receber 200; sem essa checagem,
-    // cada reenvio decrementaria o estoque de novo pro mesmo pagamento).
+    // Para pedidos novos, o estoque já está reservado e os scripts Redis
+    // tornam confirmação/liberação idempotentes mesmo com webhooks paralelos.
     const before = await getOrderByExternalReference(orderId);
     const wasAlreadyPaid = before?.status === "pago";
+    if (wasAlreadyPaid) return NextResponse.json({ received: true, alreadyProcessed: true });
+
+    if (before?.stockReserved) {
+      if (newStatus === "pago") {
+        const committed = await commitStockReservation(orderId);
+        if (!committed) {
+          console.error(`ATENÇÃO: pagamento ${paymentId} aprovado, mas a reserva do pedido ${orderId} expirou sem estoque disponível.`);
+        }
+      } else if (payment.status === "cancelled") {
+        // Uma tentativa recusada ainda pode ser refeita na mesma preferência;
+        // mantém a reserva até expirar. Cancelamento explícito libera já.
+        await releaseStockReservation(orderId);
+      }
+    }
+    if (before && newStatus === "pago" && !wasAlreadyPaid && !before.stockReserved) {
+      // Compatibilidade com pedidos pendentes anteriores à reserva. Reserva
+      // antes de mudar o status para que uma repetição possa concluir a baixa.
+      const reserved = await reserveStock(orderId, before.items.map(({ productId, quantity }) => ({ productId, quantity })));
+      if (reserved) await commitStockReservation(orderId);
+      else console.error(`ATENÇÃO: pedido legado ${orderId} pago sem estoque disponível para baixa.`);
+    }
 
     // --- 3) Atualiza o pedido no orders-store (troque por UPDATE no seu
     //     banco de verdade quando plugar o ORM — ver lib/server/orders-store.ts) ---
@@ -127,17 +146,6 @@ export async function POST(request: Request) {
       // diferente — ver o aviso no topo de orders-store.ts). Com um
       // banco de verdade isso não aconteceria.
       console.warn(`Webhook: pedido ${orderId} não encontrado no orders-store.`);
-    } else if (newStatus === "pago" && !wasAlreadyPaid) {
-      // Pagamento confirmado pela primeira vez — agora sim baixa o
-      // estoque de verdade (ver o "porquê não decrementar no checkout"
-      // em lib/server/stock-store.ts). Falha ao baixar estoque não deve
-      // derrubar a confirmação do pagamento (o pedido já está marcado
-      // como pago, o que importa mais) — só loga pra investigar depois.
-      try {
-        await Promise.all(updated.items.map((item) => adjustStock(item.productId, -item.quantity)));
-      } catch (stockErr) {
-        console.error(`Webhook: falha ao baixar estoque do pedido ${orderId}:`, stockErr);
-      }
     }
 
     return NextResponse.json({ received: true });

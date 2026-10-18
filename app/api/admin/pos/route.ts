@@ -20,9 +20,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin/auth-config";
-import { PRODUCTS } from "@/app/products";
+import { getCatalogProducts } from "@/lib/server/products-store";
 import { createOrder } from "@/lib/server/orders-store";
-import { adjustStock, getStock } from "@/lib/server/stock-store";
+import { commitStockReservation, releaseStockReservation, reserveStock } from "@/lib/server/stock-store";
 import type { OrderItem, PhysicalPaymentMethod } from "@/lib/admin/types";
 
 const PAYMENT_METHODS: PhysicalPaymentMethod[] = ["dinheiro", "pix", "cartao_credito", "cartao_debito"];
@@ -47,34 +47,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
   }
 
-  if (!body.items || body.items.length === 0) {
+  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 100) {
     return NextResponse.json({ error: "Carrinho vazio." }, { status: 400 });
   }
   if (!PAYMENT_METHODS.includes(body.paymentMethod)) {
     return NextResponse.json({ error: "Forma de pagamento inválida." }, { status: 400 });
   }
 
-  const orderItems: OrderItem[] = [];
+  const orderItemsById = new Map<string, OrderItem>();
+  const products = await getCatalogProducts();
 
   for (const cartItem of body.items) {
-    const product = PRODUCTS.find((p) => p.id === cartItem.id);
+    if (!cartItem || typeof cartItem.id !== "string" || !Number.isSafeInteger(cartItem.quantity) || cartItem.quantity < 1) {
+      return NextResponse.json({ error: "Item ou quantidade inválida no carrinho." }, { status: 400 });
+    }
+    const product = products.find((p) => p.id === cartItem.id);
     if (!product) {
       return NextResponse.json({ error: `Produto ${cartItem.id} não encontrado.` }, { status: 400 });
     }
-    if (cartItem.quantity < 1) continue;
-
-    const currentStock = await getStock(product.id);
-    if (currentStock < cartItem.quantity) {
-      return NextResponse.json({ error: `"${product.name}" não tem estoque suficiente.` }, { status: 409 });
-    }
-
-    orderItems.push({
+    const existing = orderItemsById.get(product.id);
+    orderItemsById.set(product.id, {
       productId: product.id,
       productName: product.name,
-      quantity: cartItem.quantity,
+      quantity: (existing?.quantity ?? 0) + cartItem.quantity,
       unitPrice: product.price,
     });
   }
+
+  const orderItems = [...orderItemsById.values()];
 
   if (orderItems.length === 0) {
     return NextResponse.json({ error: "Nenhum item válido no carrinho." }, { status: 400 });
@@ -82,26 +82,29 @@ export async function POST(request: Request) {
 
   const total = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
-  const order = await createOrder({
-    customerName: "Venda no balcão",
-    customerPhone: "",
-    customerEmail: "",
-    customerCPF: "",
-    items: orderItems,
-    total,
-    source: "fisico",
-    status: "despachado",
-    paymentMethodPhysical: body.paymentMethod,
-  });
+  const reservationId = `PED-${crypto.randomUUID()}`;
+  const reserved = await reserveStock(reservationId, orderItems.map(({ productId, quantity }) => ({ productId, quantity })));
+  if (!reserved) return NextResponse.json({ error: "Estoque insuficiente para um ou mais produtos." }, { status: 409 });
 
-  // Baixa o estoque agora — venda física é na hora, não tem "confirmação"
-  // separada como o webhook do Mercado Pago. Se uma baixa falhar no meio
-  // do caminho (bem raro, seria uma falha do Redis), o pedido já foi
-  // criado — melhor investigar depois do que travar a venda no balcão.
+  let order;
   try {
-    await Promise.all(orderItems.map((item) => adjustStock(item.productId, -item.quantity)));
-  } catch (stockErr) {
-    console.error(`PDV: falha ao baixar estoque do pedido ${order.id}:`, stockErr);
+    order = await createOrder({
+      id: reservationId,
+      customerName: "Venda no balcão",
+      customerPhone: "",
+      customerEmail: "",
+      customerCPF: "",
+      items: orderItems,
+      total,
+      source: "fisico",
+      status: "despachado",
+      paymentMethodPhysical: body.paymentMethod,
+      stockReserved: true,
+    });
+    await commitStockReservation(reservationId);
+  } catch (error) {
+    await releaseStockReservation(reservationId);
+    throw error;
   }
 
   return NextResponse.json({ order });
