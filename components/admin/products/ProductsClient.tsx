@@ -21,7 +21,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Leaf, Minus, Pencil, Plus, PlusCircle, Search } from "lucide-react";
+import { Leaf, Minus, Pencil, Plus, PlusCircle, Search, Trash2 } from "lucide-react";
 import type { AdminProduct } from "@/lib/admin/types";
 import { ALL_CATEGORIES, getCategoryLabel, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 import CategoryTabs from "@/components/CategoryTabs";
@@ -116,6 +116,8 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>(TODOS);
   const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Ao trocar de categoria, rola pro topo da tabela — assim quem já tinha
@@ -183,6 +185,23 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
   function openEditModal(product: AdminProduct) {
     setEditingProduct(product);
     setModalOpen(true);
+  }
+
+  async function handleDeleteProduct(product: AdminProduct) {
+    const confirmed = window.confirm(`Excluir "${product.name}" do estoque e da loja? O histórico de pedidos será mantido.`);
+    if (!confirmed) return;
+    setDeletingId(product.id);
+    setActionError("");
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(product.id)}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Falha ao excluir o produto.");
+      setProducts((previous) => previous.filter((entry) => entry.id !== product.id));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Falha ao excluir o produto.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   /**
@@ -261,6 +280,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
           Adicionar novo produto
         </button>
       </div>
+      {actionError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CategoryTabs categories={categoryTabs} active={activeCategory} onChange={handleCategoryChange} />
@@ -349,6 +369,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
                     </button>
                   </td>
                   <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEditModal(product)}
                       className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-brand-green hover:text-brand-forest"
@@ -356,6 +377,16 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
                       <Pencil className="h-3.5 w-3.5" />
                       Editar
                     </button>
+                    <button
+                      onClick={() => handleDeleteProduct(product)}
+                      disabled={deletingId === product.id}
+                      aria-label={`Excluir ${product.name}`}
+                      title="Excluir produto"
+                      className="rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    </div>
                   </td>
                 </tr>
               ))}

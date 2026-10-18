@@ -3,7 +3,8 @@ import type { AdminProduct } from "@/lib/admin/types";
 import { redis } from "@/lib/server/redis";
 
 const KEY = "gh:products";
-const memoryProducts = new Map<string, AdminProduct>();
+type StoredProduct = AdminProduct & { deleted?: boolean };
+const memoryProducts = new Map<string, StoredProduct>();
 
 function seedProducts(): AdminProduct[] {
   return SEED_PRODUCTS.map((product) => ({
@@ -13,17 +14,33 @@ function seedProducts(): AdminProduct[] {
 }
 
 export async function getProducts(): Promise<AdminProduct[]> {
-  if (!redis) return [...seedProducts(), ...memoryProducts.values()];
+  if (!redis) {
+    const byId = new Map<string, StoredProduct>(seedProducts().map((product) => [product.id, product]));
+    for (const product of memoryProducts.values()) byId.set(product.id, product);
+    return [...byId.values()].filter((product) => !product.deleted);
+  }
   const saved = await redis.hgetall<Record<string, AdminProduct | string>>(KEY);
-  const additions = Object.values(saved ?? {}).map((value) => typeof value === "string" ? JSON.parse(value) as AdminProduct : value);
-  const byId = new Map(seedProducts().map((product) => [product.id, product]));
+  const additions = Object.values(saved ?? {}).map((value) => typeof value === "string" ? JSON.parse(value) as StoredProduct : value as StoredProduct);
+  const byId = new Map<string, StoredProduct>(seedProducts().map((product) => [product.id, product]));
   for (const product of additions) byId.set(product.id, product);
-  return [...byId.values()];
+  return [...byId.values()].filter((product) => !product.deleted);
 }
 
 export async function saveProduct(product: AdminProduct): Promise<void> {
   if (redis) await redis.hset(KEY, { [product.id]: JSON.stringify(product) });
   else memoryProducts.set(product.id, product);
+}
+
+/** Soft delete: hides the item from store/stock lists but keeps pending order
+ * reservations and historical order lines intact. The tombstone also masks
+ * products that are part of the source catalog. */
+export async function deleteProduct(productId: string): Promise<boolean> {
+  const product = (await getProducts()).find((entry) => entry.id === productId);
+  if (!product) return false;
+  const tombstone: StoredProduct = { ...product, deleted: true };
+  if (redis) await redis.hset(KEY, { [productId]: JSON.stringify(tombstone) });
+  else memoryProducts.set(productId, tombstone);
+  return true;
 }
 
 export async function getCatalogProducts(): Promise<Product[]> {
