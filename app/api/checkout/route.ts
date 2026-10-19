@@ -126,6 +126,9 @@ export async function POST(request: Request) {
     if (!product) {
       return NextResponse.json({ error: `Produto ${cartItem.id} não encontrado.` }, { status: 400 });
     }
+    if (product.active === false || product.soldOut || (product.stock ?? 0) <= 0) {
+      return NextResponse.json({ error: `O produto "${product.name}" está indisponível.` }, { status: 409 });
+    }
     const existing = orderItemsById.get(product.id);
     orderItemsById.set(product.id, {
       productId: product.id,

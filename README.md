@@ -15,9 +15,7 @@ Landing page / vitrine em Next.js + Tailwind CSS para o Gordão HeadShop.
 
 ## Funcionalidade do carrinho
 
-O carrinho monta uma mensagem formatada com os itens, quantidades, total, nome do cliente,
-forma de recebimento (retirada ou entrega — com endereço/CEP/número quando aplicável) e forma
-de pagamento, e abre direto no WhatsApp (`wa.me`) pronta para envio.
+O carrinho fecha a venda completa, totalmente funcional, com calculo de frete, finalizacao de compra, e checkout pela api mercado pago.
 
 ## Painel admin (`/admin`)
 

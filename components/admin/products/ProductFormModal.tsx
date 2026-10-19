@@ -19,10 +19,9 @@
  * `categoryTouched` abaixo) — só volta a sugerir se o nome mudar de novo
  * ainda sem seleção manual.
  *
- * Upload de imagem: como ainda não existe backend/storage de verdade,
- * a foto escolhida é lida no navegador (FileReader) e vira uma "data
- * URL" — uma string que já contém a imagem inteira, guardada junto do
- * produto em memória. Funciona igual em desktop e celular: em celular,
+ * Upload de imagem: a foto escolhida é lida no navegador (FileReader),
+ * reduzida para JPEG e gravada junto ao produto no Redis como data URL.
+ * Funciona igual em desktop e celular: em celular,
  * <input type="file" accept="image/*"> abre nativamente a opção de
  * escolher da galeria ou tirar uma foto na hora. Quando plugar upload de
  * verdade (S3, Cloudinary, etc.), troque só a função `handleFileChange`
@@ -63,6 +62,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
   // no nome não sobrescreve mais a escolha dela (ver useEffect de `name` abaixo).
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [rawImage, setRawImage] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [imageScale, setImageScale] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -80,6 +80,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       setPrice(String(editingProduct.price));
       setStock(String(editingProduct.stock));
       setRawImage(editingProduct.imageUrl ?? null);
+      setImageRemoved(false);
       // Produto editado já tem uma seção "oficial" (escolhida antes ou
       // detectada) — trata como já definida, não deixa o nome sobrescrever.
       setCategory(editingProduct.categoryOverride ?? parseProductCategory(editingProduct.name));
@@ -89,6 +90,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       setPrice(BLANK_FORM.price);
       setStock(BLANK_FORM.stock);
       setRawImage(null);
+      setImageRemoved(false);
       setCategory("diversos");
       setCategoryTouched(false);
     }
@@ -110,7 +112,9 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
     setSaveError("");
 
     try {
-      const imageUrl = rawImage ? await bakeImageToDataUrl(rawImage, imageScale) : editingProduct?.imageUrl;
+      const imageUrl = rawImage
+        ? await bakeImageToDataUrl(rawImage, imageScale)
+        : imageRemoved ? undefined : editingProduct?.imageUrl;
       await onSave({
       id: editingProduct?.id ?? `NOVO-${Date.now()}`,
       name,
@@ -118,6 +122,7 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
       price: Number(price) || 0,
       stock: Number(stock) || 0,
       soldOut: Number(stock) <= 0,
+      active: editingProduct?.active ?? true,
       featured: editingProduct?.featured,
       promoLabel: editingProduct?.promoLabel,
       categoryOverride: category,
@@ -200,11 +205,13 @@ export default function ProductFormModal({ open, editingProduct, onClose, onSave
             scale={imageScale}
             onPickImage={(dataUrl) => {
               setRawImage(dataUrl);
+              setImageRemoved(false);
               setImageScale(1); // toda foto nova (ou trocada) começa sem zoom
             }}
             onScaleChange={setImageScale}
             onRemove={() => {
               setRawImage(null);
+              setImageRemoved(true);
               setImageScale(1);
             }}
           />

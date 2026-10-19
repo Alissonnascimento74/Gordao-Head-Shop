@@ -12,11 +12,8 @@
  * `resolveCategory` abaixo centraliza essa regra pra tabela, os filtros e
  * as abas nunca divergirem entre si.
  *
- * `initialProducts` vem do catálogo real (482 produtos, ver
- * lib/admin/mock-data.ts) — editar aqui só muda o estado desta página
- * (não grava no arquivo real nem na loja, ainda não existe backend).
- * EXCEÇÃO: "Valor de entrada" (CostPriceCell, mais abaixo) persiste de
- * verdade no Redis via POST /api/admin/product-costs.
+ * `initialProducts` vem do catálogo persistido. Alterações de produto,
+ * estoque, disponibilidade e custo são confirmadas pelo servidor/Redis.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -136,6 +133,7 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
    * número otimista daqui pode ficar levemente defasado por um instante).
    */
   async function adjustStock(id: string, delta: number) {
+    const previousStock = products.find((product) => product.id === id)?.stock;
     setProducts((prev) =>
       prev.map((product) => {
         if (product.id !== id) return product;
@@ -150,31 +148,40 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delta }),
       });
-      const data: { stock?: number } = await response.json();
+      const data: { stock?: number; error?: string } = await response.json();
       if (!response.ok) {
         if (typeof data.stock === "number") {
           setProducts((prev) => prev.map((product) => product.id === id ? { ...product, stock: data.stock!, soldOut: data.stock! <= 0 } : product));
         }
-        return;
+        throw new Error(data.error || "Não foi possível atualizar o estoque.");
       }
-      if (typeof data.stock !== "number") return;
+      if (typeof data.stock !== "number") throw new Error("Resposta inválida ao atualizar o estoque.");
       const confirmedStock = data.stock;
       setProducts((prev) =>
         prev.map((product) =>
           product.id === id ? { ...product, stock: confirmedStock, soldOut: confirmedStock <= 0 } : product
         )
       );
-    } catch {
-      // Falha de rede — fica com o valor otimista; o próximo carregamento
-      // da página traz o valor real do Redis.
+    } catch (error) {
+      if (typeof previousStock === "number") setProducts((prev) => prev.map((product) => product.id === id ? { ...product, stock: previousStock, soldOut: previousStock <= 0 } : product));
+      setActionError(error instanceof Error ? error.message : "Falha ao salvar estoque.");
     }
   }
 
   /** Alterna manualmente entre "Disponível" e "Esgotado" pra um produto. */
-  function toggleSoldOut(id: string) {
-    setProducts((prev) =>
-      prev.map((product) => (product.id === id ? { ...product, soldOut: !product.soldOut } : product))
-    );
+  async function toggleSoldOut(product: AdminProduct) {
+    const active = product.active === false;
+    setActionError("");
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(product.id)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Falha ao salvar disponibilidade.");
+      setProducts((prev) => prev.map((entry) => entry.id === product.id ? { ...data.product, soldOut: !active || data.product.stock <= 0 } : entry));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Falha ao salvar disponibilidade.");
+    }
   }
 
   function openAddModal() {
@@ -359,13 +366,14 @@ export default function ProductsClient({ initialProducts }: { initialProducts: A
                   </td>
                   <td className="px-5 py-3">
                     <button
-                      onClick={() => toggleSoldOut(product.id)}
+                      onClick={() => toggleSoldOut(product)}
+                      disabled={product.stock <= 0}
                       className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition ${
-                        product.soldOut ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                        (product.active === false || product.stock <= 0) ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
                       }`}
                     >
-                      <span className={`h-2 w-2 rounded-full ${product.soldOut ? "bg-red-500" : "bg-emerald-500"}`} />
-                      {product.soldOut ? "Esgotado" : "Disponível"}
+                      <span className={`h-2 w-2 rounded-full ${(product.active === false || product.stock <= 0) ? "bg-red-500" : "bg-emerald-500"}`} />
+                      {product.stock <= 0 ? "Esgotado" : product.active === false ? "Indisponível" : "Disponível"}
                     </button>
                   </td>
                   <td className="px-5 py-3">

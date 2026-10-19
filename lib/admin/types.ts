@@ -17,6 +17,8 @@ export type AdminProduct = {
   soldOut: boolean;
   /** true = aparece na seção de destaque da tela inicial (ver /admin/promocoes). */
   featured?: boolean;
+  /** Disponibilidade controlada pelo admin, independente da quantidade. */
+  active?: boolean;
   /** Selo de promoção mostrado sobre o produto, ex.: "10% OFF". Ausente = sem promoção. */
   promoLabel?: string;
   /** Valor de entrada (custo pago pela loja) — ausente = ainda não cadastrado.

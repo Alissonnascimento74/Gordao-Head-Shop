@@ -42,6 +42,7 @@ export type PosProduct = {
   price: number;
   imageUrl?: string;
   stock: number;
+  active?: boolean;
 };
 
 type CartLine = {
@@ -89,8 +90,8 @@ export default function PosClient({ products: initialProducts }: { products: Pos
   }, [query, products]);
 
   function addToCart(product: PosProduct) {
-    if (product.stock <= 0) {
-      setFeedback({ type: "error", message: `"${product.name}" está sem estoque.` });
+    if (product.stock <= 0 || product.active === false) {
+      setFeedback({ type: "error", message: `"${product.name}" está indisponível.` });
       return;
     }
     setCart((prev) => {
@@ -222,7 +223,7 @@ export default function PosClient({ products: initialProducts }: { products: Pos
                   key={product.id}
                   type="button"
                   onClick={() => addToCart(product)}
-                  disabled={product.stock <= 0}
+                  disabled={product.stock <= 0 || product.active === false}
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
@@ -239,7 +240,7 @@ export default function PosClient({ products: initialProducts }: { products: Pos
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-medium text-slate-700">{formatCurrency(product.price)}</p>
                     <p className={`text-xs ${product.stock <= 0 ? "text-red-500" : "text-slate-400"}`}>
-                      {product.stock <= 0 ? "Esgotado" : `${product.stock} em estoque`}
+                      {product.stock <= 0 ? "Esgotado" : product.active === false ? "Indisponível" : `${product.stock} em estoque`}
                     </p>
                   </div>
                 </button>

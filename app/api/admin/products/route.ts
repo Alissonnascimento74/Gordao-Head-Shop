@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin/auth-config";
-import { saveProduct } from "@/lib/server/products-store";
+import { ProductStoreUnavailableError, saveProduct } from "@/lib/server/products-store";
 import { setStock } from "@/lib/server/stock-store";
 import type { AdminProduct } from "@/lib/admin/types";
 
@@ -18,7 +18,10 @@ export async function POST(request: Request) {
     const stockUpdated = await setStock(product.id, product.stock);
     if (!stockUpdated) return NextResponse.json({ error: "O estoque informado é menor que as unidades já reservadas em pedidos pendentes." }, { status: 409 });
     return NextResponse.json({ product });
-  } catch {
+  } catch (error) {
+    if (error instanceof ProductStoreUnavailableError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
     return NextResponse.json({ error: "Não foi possível salvar o produto. Verifique a conexão com o banco." }, { status: 500 });
   }
 }

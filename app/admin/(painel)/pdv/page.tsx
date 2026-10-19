@@ -27,6 +27,7 @@ export default async function PdvPage() {
     name: product.name,
     price: product.price,
     imageUrl: product.imageUrl,
+    active: product.active,
     stock: stockMap[product.id] ?? product.stock ?? 0,
   }));
 

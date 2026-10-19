@@ -17,9 +17,12 @@ import { redis } from "@/lib/server/redis";
 
 const COSTS_KEY = "gh:product-costs";
 
-// Fallback só usado quando o Redis não está configurado (dev local sem
-// as credenciais copiadas) — mesmo padrão do orders-store.ts.
-const memoryCosts: Record<string, number> = {};
+export class ProductCostsUnavailableError extends Error {
+  constructor() {
+    super("Redis indisponível. O valor não foi salvo; tente novamente quando a conexão for restabelecida.");
+    this.name = "ProductCostsUnavailableError";
+  }
+}
 
 export async function getProductCosts(): Promise<Record<string, number>> {
   if (redis) {
@@ -31,13 +34,10 @@ export async function getProductCosts(): Promise<Record<string, number>> {
     if (!data) return {};
     return Object.fromEntries(Object.entries(data).map(([id, value]) => [id, Number(value)]));
   }
-  return { ...memoryCosts };
+  throw new ProductCostsUnavailableError();
 }
 
 export async function setProductCost(productId: string, costPrice: number): Promise<void> {
-  if (redis) {
-    await redis.hset(COSTS_KEY, { [productId]: costPrice });
-    return;
-  }
-  memoryCosts[productId] = costPrice;
+  if (!redis) throw new ProductCostsUnavailableError();
+  await redis.hset(COSTS_KEY, { [productId]: costPrice });
 }

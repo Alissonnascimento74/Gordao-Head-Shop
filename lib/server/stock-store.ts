@@ -192,6 +192,13 @@ const memoryStock: Record<string, number> = Object.fromEntries(
   PRODUCTS.map((product) => [product.id, product.stock ?? 0])
 );
 
+export class StockStoreUnavailableError extends Error {
+  constructor() {
+    super("Redis indisponível. O estoque não foi alterado; tente novamente quando a conexão voltar.");
+    this.name = "StockStoreUnavailableError";
+  }
+}
+
 let seedPromise: Promise<void> | null = null;
 function seedIfNeeded(): Promise<void> {
   if (!redis) return Promise.resolve();
@@ -235,31 +242,15 @@ export async function getStock(productId: string): Promise<number> {
 /** Incrementa (delta positivo) ou decrementa (delta negativo) o estoque
  *  de um produto, atomicamente. Devolve o novo valor. */
 export async function adjustStock(productId: string, delta: number): Promise<number> {
-  if (redis) {
-    await seedIfNeeded();
-    return Number(await redis.eval(STOCK_DELTA_SCRIPT, [STOCK_KEY], [productId, String(delta)]));
-  }
-  const next = (memoryStock[productId] ?? 0) + delta;
-  if (next < 0) return -1;
-  memoryStock[productId] = next;
-  return next;
+  if (!redis) throw new StockStoreUnavailableError();
+  await seedIfNeeded();
+  return Number(await redis.eval(STOCK_DELTA_SCRIPT, [STOCK_KEY], [productId, String(delta)]));
 }
 
 export async function setStock(productId: string, stock: number): Promise<boolean> {
-  if (redis) {
-    await seedIfNeeded();
-    const result = Number(await redis.eval(STOCK_SET_SCRIPT,
-      [STOCK_KEY, RESERVATIONS_KEY, RESERVATION_EXPIRY_KEY], [productId, String(stock), String(Date.now())]));
-    return result >= 0;
-  } else {
-    cleanupMemoryReservations();
-    const held = [...memoryReservations.values()]
-      .filter((entry) => entry.reservation.status === "reserved")
-      .flatMap((entry) => entry.reservation.items)
-      .filter((item) => item.productId === productId)
-      .reduce((sum, item) => sum + item.quantity, 0);
-    if (stock < held) return false;
-    memoryStock[productId] = stock - held;
-    return true;
-  }
+  if (!redis) throw new StockStoreUnavailableError();
+  await seedIfNeeded();
+  const result = Number(await redis.eval(STOCK_SET_SCRIPT,
+    [STOCK_KEY, RESERVATIONS_KEY, RESERVATION_EXPIRY_KEY], [productId, String(stock), String(Date.now())]));
+  return result >= 0;
 }

@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin/auth-config";
-import { getProductCosts, setProductCost } from "@/lib/server/product-costs";
+import { getProductCosts, ProductCostsUnavailableError, setProductCost } from "@/lib/server/product-costs";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -22,8 +22,13 @@ export async function GET() {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
-  const costs = await getProductCosts();
-  return NextResponse.json({ costs });
+  try {
+    const costs = await getProductCosts();
+    return NextResponse.json({ costs });
+  } catch (error) {
+    if (error instanceof ProductCostsUnavailableError) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json({ error: "Não foi possível carregar os custos." }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -44,6 +49,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Valor de entrada inválido." }, { status: 400 });
   }
 
-  await setProductCost(productId, costPrice);
-  return NextResponse.json({ ok: true });
+  try {
+    await setProductCost(productId, costPrice);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof ProductCostsUnavailableError) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json({ error: "Não foi possível salvar o valor de entrada." }, { status: 500 });
+  }
 }

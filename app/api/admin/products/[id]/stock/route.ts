@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin/auth-config";
-import { adjustStock, getStock } from "@/lib/server/stock-store";
+import { adjustStock, getStock, StockStoreUnavailableError } from "@/lib/server/stock-store";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
@@ -29,7 +29,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "delta deve ser um inteiro diferente de zero." }, { status: 400 });
   }
 
-  const stock = await adjustStock(id, delta);
-  if (stock < 0) return NextResponse.json({ error: "Estoque não pode ficar negativo.", stock: await getStock(id) }, { status: 409 });
-  return NextResponse.json({ stock });
+  try {
+    const stock = await adjustStock(id, delta);
+    if (stock < 0) return NextResponse.json({ error: "Estoque não pode ficar negativo.", stock: await getStock(id) }, { status: 409 });
+    return NextResponse.json({ stock });
+  } catch (error) {
+    if (error instanceof StockStoreUnavailableError) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json({ error: "Não foi possível salvar o estoque." }, { status: 500 });
+  }
 }

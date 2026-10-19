@@ -16,11 +16,13 @@ import type { Order } from "@/lib/admin/types";
 type ShipOrderModalProps = {
   order: Order | null;
   onClose: () => void;
-  onConfirm: (orderId: string, trackingCode: string) => void;
+  onConfirm: (orderId: string, trackingCode: string) => Promise<void>;
 };
 
 export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderModalProps) {
   const [trackingCode, setTrackingCode] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const isPickup = order?.shippingMethod?.carrier === "Retirada";
 
   function handleClose() {
@@ -28,17 +30,26 @@ export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderM
     onClose();
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!order) return;
-    onConfirm(order.id, trackingCode);
-    handleClose();
+    setSaving(true);
+    setError("");
+    try {
+      await onConfirm(order.id, trackingCode);
+      handleClose();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Modal open={!!order} onClose={handleClose} title={isPickup ? "Marcar como retirado" : "Marcar como despachado"}>
       {order && (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <p className="text-sm text-slate-600">
             Pedido <span className="font-medium text-slate-800">{order.id}</span> — {order.customerName}
           </p>
@@ -65,15 +76,17 @@ export default function ShipOrderModal({ order, onClose, onConfirm }: ShipOrderM
             <button
               type="button"
               onClick={handleClose}
+              disabled={saving}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
+              disabled={saving}
               className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-brand-darker hover:bg-brand-greenLight"
             >
-              {isPickup ? "Confirmar retirada" : "Confirmar despacho"}
+              {saving ? "Salvando..." : isPickup ? "Confirmar retirada" : "Confirmar despacho"}
             </button>
           </div>
         </form>

@@ -8,12 +8,8 @@
  * `FEATURED_PRODUCTS` em app/page.tsx) e permite colocar um selo de
  * promoção (ex.: "10% OFF") em qualquer produto.
  *
- * Como está tudo mockado (sem backend ainda), essa tela guarda seu
- * próprio estado, separado do estado da tela de Produtos — os dois
- * partem da mesma lista inicial (MOCK_PRODUCTS), mas cada tela tem sua
- * cópia em memória. Quando plugar uma API/banco de dados real, as duas
- * telas passam a ler e escrever no mesmo lugar, e essa separação some
- * sozinha.
+ * Destaques e selos são persistidos no registro do produto via API de
+ * administração e Redis.
  */
 
 import { useMemo, useState } from "react";
@@ -27,26 +23,35 @@ function formatCurrency(value: number) {
 
 export default function PromotionsClient({ initialProducts }: { initialProducts: AdminProduct[] }) {
   const [products, setProducts] = useState(initialProducts);
+  const [promoDrafts, setPromoDrafts] = useState<Record<string, string>>({});
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+  const [actionError, setActionError] = useState("");
 
   // Lista só dos produtos marcados como destaque — é exatamente o que
   // vai aparecer na seção de fotos grandes da tela inicial da loja.
   const featuredProducts = useMemo(() => products.filter((product) => product.featured), [products]);
 
-  /** Liga/desliga o destaque de um produto (aparecer ou não no topo da home). */
-  function toggleFeatured(id: string) {
-    setProducts((prev) =>
-      prev.map((product) => (product.id === id ? { ...product, featured: !product.featured } : product))
-    );
+  async function saveChanges(id: string, changes: { featured?: boolean; promoLabel?: string | null }) {
+    setSavingIds((previous) => [...previous, id]);
+    setActionError("");
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível salvar a alteração.");
+      setProducts((previous) => previous.map((product) => product.id === id ? data.product as AdminProduct : product));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Não foi possível salvar a alteração.");
+    } finally {
+      setSavingIds((previous) => previous.filter((savingId) => savingId !== id));
+    }
   }
 
-  /**
-   * Define o texto do selo de promoção de um produto (ex.: "15% OFF").
-   * Uma string vazia é tratada como "sem promoção" (remove o selo).
-   */
-  function setPromoLabel(id: string, label: string) {
-    setProducts((prev) =>
-      prev.map((product) => (product.id === id ? { ...product, promoLabel: label || undefined } : product))
-    );
+  function toggleFeatured(product: AdminProduct) {
+    void saveChanges(product.id, { featured: !product.featured });
   }
 
   return (
@@ -57,6 +62,8 @@ export default function PromotionsClient({ initialProducts }: { initialProducts:
           Escolha quais produtos aparecem em destaque na tela inicial da loja e adicione selos de promoção.
         </p>
       </div>
+
+      {actionError && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>}
 
       {/* Pré-visualização: simula a seção de destaque do topo da home. */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -125,7 +132,8 @@ export default function PromotionsClient({ initialProducts }: { initialProducts:
                   <td className="px-5 py-3 text-slate-600">{formatCurrency(product.price)}</td>
                   <td className="px-5 py-3">
                     <button
-                      onClick={() => toggleFeatured(product.id)}
+                      onClick={() => toggleFeatured(product)}
+                      disabled={savingIds.includes(product.id)}
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                         product.featured
                           ? "bg-brand-green text-brand-darker"
@@ -139,14 +147,25 @@ export default function PromotionsClient({ initialProducts }: { initialProducts:
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <input
-                        value={product.promoLabel ?? ""}
-                        onChange={(e) => setPromoLabel(product.id, e.target.value)}
+                        value={promoDrafts[product.id] ?? product.promoLabel ?? ""}
+                        maxLength={40}
+                        disabled={savingIds.includes(product.id)}
+                        onChange={(e) => setPromoDrafts((previous) => ({ ...previous, [product.id]: e.target.value }))}
+                        onBlur={(e) => {
+                          const label = e.currentTarget.value.trim();
+                          if (label !== (product.promoLabel ?? "")) void saveChanges(product.id, { promoLabel: label || null });
+                        }}
                         placeholder="Ex.: 10% OFF"
                         className="w-36 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-brand-green"
                       />
                       {product.promoLabel && (
                         <button
-                          onClick={() => setPromoLabel(product.id, "")}
+                          disabled={savingIds.includes(product.id)}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setPromoDrafts((previous) => ({ ...previous, [product.id]: "" }));
+                            void saveChanges(product.id, { promoLabel: null });
+                          }}
                           className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                           aria-label="Remover selo de promoção"
                         >

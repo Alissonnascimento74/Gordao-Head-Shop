@@ -1,13 +1,5 @@
-// MOCK_PRODUCTS deriva do catálogo real (app/products.ts), mas editar
-// nome/preço/foto/disponibilidade aqui só muda o estado em memória do
-// navegador (ProductsClient) — não grava em lugar nenhum. Recarregar a
-// página volta pro catálogo original. Precisa de um banco de dados de
-// verdade por trás pra persistir esses campos de vez.
-//
-// DUAS exceções que já persistem de verdade (Redis): "valor de entrada"
-// (lib/server/product-costs.ts) e "estoque" (lib/server/stock-store.ts,
-// o mesmo estoque que o PDV e o checkout online usam — ver seção 26 do
-// Obsidian / commit do módulo PDV).
+// Carrega do Redis os dados editáveis e combina com o catálogo base e o
+// estoque transacional compartilhado com checkout e PDV.
 import type { Metadata } from "next";
 import ProductsClient from "@/components/admin/products/ProductsClient";
 import { getProducts } from "@/lib/server/products-store";
@@ -31,7 +23,7 @@ export default async function ProdutosPage() {
       ...product,
       costPrice: costs[product.id],
       stock,
-      soldOut: stock <= 0,
+      soldOut: product.active === false || stock <= 0,
     };
   });
 
