@@ -13,6 +13,12 @@ export type Product = {
   stock?: number;
   description?: string;
   badge?: string;
+  /** Produto selecionado pelo admin para a seção de destaques da página inicial. */
+  featured?: boolean;
+  /** Texto promocional opcional configurado no painel. */
+  promoLabel?: string;
+  soldOut?: boolean;
+  active?: boolean;
 };
 
 export const PRODUCTS: Product[] = [

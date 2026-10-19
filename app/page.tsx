@@ -24,17 +24,11 @@ import LeafWatermark from "@/components/LeafWatermark";
 import { getAvailableCategories, parseProductCategory, type CategoryId } from "@/utils/categoryParser";
 import { saveCheckoutCart } from "@/utils/checkoutCart";
 
-const FEATURED_PRODUCTS: { id: string; image: string }[] = [
-  { id: "000046-1", image: "/products/bandeja-narcos.jpg" }, // Bandeja Narcos
-  { id: "000075", image: "/products/rick-and-morty-tray.jpg" }, // Case Rick and Morty
-  { id: "000300-1", image: "/products/vault77-bag.jpg" }, // Bag Vault transversal
-];
-
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
 
-const WHATSAPP_NUMBER = "5511997306428"; // Número do WhatsApp Business do Gordão HeadShop (DDI+DDD+número, só dígitos)
+const DEFAULT_WHATSAPP_NUMBER = "5511997306428";
 
 // Categorias calculadas a partir do NOME de cada produto (utils/categoryParser.ts),
 // a mesma inteligência usada no Painel Admin e na Vitrine de demonstração — troca
@@ -116,6 +110,8 @@ export default function GordaoHeadShopPage() {
   const [activeCategory, setActiveCategory] = useState<CategoryId | "todos">("todos");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [storeName, setStoreName] = useState("Gordão HeadShop");
+  const [whatsappNumber, setWhatsappNumber] = useState(DEFAULT_WHATSAPP_NUMBER);
   const [cartOpen, setCartOpen] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
   const [addedToastVisible, setAddedToastVisible] = useState(false);
@@ -135,7 +131,20 @@ export default function GordaoHeadShopPage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/store-settings", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((settings: { whatsappNumber?: string; storeName?: string }) => {
+        if (active && settings.whatsappNumber) setWhatsappNumber(settings.whatsappNumber);
+        if (active && settings.storeName) setStoreName(settings.storeName);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const categories = useMemo(() => getAvailableCategories(products.map((product) => product.name)), [products]);
+  const featuredProducts = useMemo(() => products.filter((product) => product.featured), [products]);
 
   // Some sozinho depois de 3s. Se o cliente adicionar outro produto antes
   // disso, reinicia a contagem (clearTimeout) em vez de empilhar avisos.
@@ -171,7 +180,7 @@ export default function GordaoHeadShopPage() {
   const cartTotal = cart.reduce((sum, item) => sum + item.qty * item.product.price, 0);
 
   function addToCart(product: Product) {
-    if (product.stock === 0) return;
+    if (product.stock === 0 || product.soldOut || product.active === false) return;
     setCart((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
@@ -288,27 +297,34 @@ export default function GordaoHeadShopPage() {
       {/* ---------------- Direto da loja (destaques com foto) ---------------- */}
       <section className="border-b border-[#e3e6de] bg-[#f5f4ef] py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-xl text-[#1f2b23] sm:text-2xl">Direto da loja</h2>
+          <h2 className="font-display text-xl text-[#1f2b23] sm:text-2xl">{storeName} em destaque</h2>
           <p className="mt-1 text-sm text-[#5f7767]">Peças reais, tiradas aqui na Gordão.</p>
 
           <div className="mt-5 -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-            {FEATURED_PRODUCTS.map((featured) => {
-              const product = products.find((p) => p.id === featured.id);
-              if (!product) return null;
-              const outOfStock = product.stock === 0;
+            {featuredProducts.map((product) => {
+              const outOfStock = product.stock === 0 || product.soldOut || product.active === false;
               return (
                 <div
                   key={product.id}
                   className="relative w-[75%] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#e3e6de] bg-white sm:w-[45%] lg:w-[31%]"
                 >
                   <div className="relative aspect-square w-full">
-                    <Image
-                      src={featured.image}
-                      alt={product.name}
-                      fill
-                      sizes="(min-width: 1024px) 31vw, (min-width: 640px) 45vw, 75vw"
-                      className="object-cover"
-                    />
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        sizes="(min-width: 1024px) 31vw, (min-width: 640px) 45vw, 75vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center"><IconLeaf className="h-10 w-10 text-[#2c4a37]" /></div>
+                    )}
+                    {product.promoLabel && (
+                      <span className="absolute right-3 top-3 rounded-full bg-[#4caf6d] px-2.5 py-1 text-[11px] font-semibold text-[#102016]">
+                        {product.promoLabel}
+                      </span>
+                    )}
                     {product.badge && (
                       <span
                         className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium ${
@@ -394,7 +410,7 @@ export default function GordaoHeadShopPage() {
 
       {/* ---------------- Botão flutuante WhatsApp ---------------- */}
       <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        href={`https://wa.me/${whatsappNumber}`}
         target="_blank"
         rel="noreferrer"
         aria-label="Falar no WhatsApp"
@@ -490,7 +506,7 @@ function AddedToCartToast({ visible }: { visible: boolean }) {
  * "Adicionar" fica desabilitado quando `stock === 0`.
  */
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  const soldOut = product.stock === 0;
+  const soldOut = product.stock === 0 || product.soldOut || product.active === false;
 
   const image = product.imageUrl ? (
     <Image
